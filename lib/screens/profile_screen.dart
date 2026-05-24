@@ -1,9 +1,10 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/app_provider.dart';
 import '../constants/theme_constants.dart';
+import '../services/image_upload_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,10 +18,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
   String? _selectedSex;
   String? _photoUrl;
+  Uint8List? _profileImageBytes;
   bool _isEditing = false;
+  bool _isSaving = false;
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _isChangingPassword = false;
   final _picker = ImagePicker();
+  final _imageUploadService = ImageUploadService();
 
   @override
   void initState() {
@@ -33,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _ageController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
     super.dispose();
   }
 
@@ -48,8 +59,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final img = await _picker.pickImage(source: source);
-    if (img != null) setState(() => _photoUrl = img.path);
+    final img = await _picker.pickImage(source: source, maxWidth: 512, maxHeight: 512);
+    if (img != null) {
+      final bytes = await img.readAsBytes();
+      setState(() => _profileImageBytes = bytes);
+    }
   }
 
   void _showPicker() {
@@ -117,26 +131,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final p = Provider.of<AppProvider>(context, listen: false);
-    await p.updateStudentProfile(
-      fullName: _nameController.text.trim(),
-      sex: _selectedSex,
-      phone: _phoneController.text.trim().isEmpty
-          ? null
-          : _phoneController.text.trim(),
-      age: _ageController.text.trim().isEmpty
-          ? null
-          : int.tryParse(_ageController.text.trim()),
-      photoUrl: _photoUrl,
-    );
-    setState(() => _isEditing = false);
-    if (mounted) {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final p = Provider.of<AppProvider>(context, listen: false);
+      final studentId = p.currentStudent?.studentId;
+      String? finalPhotoUrl = _photoUrl;
+
+      // Step 1: Upload new image if one was picked
+      if (_profileImageBytes != null && studentId != null) {
+        final uploadedUrl = await _imageUploadService.uploadImageBytes(
+          imageBytes: _profileImageBytes!,
+          studentId: studentId,
+        );
+        if (uploadedUrl == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image upload failed. Please try again.'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          setState(() => _isSaving = false);
+          return;
+        }
+        finalPhotoUrl = uploadedUrl;
+      }
+
+      // Step 2: Save profile data to Firestore
+      await p.updateStudentProfile(
+        fullName: _nameController.text.trim(),
+        sex: _selectedSex,
+        phone: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        age: _ageController.text.trim().isEmpty
+            ? null
+            : int.tryParse(_ageController.text.trim()),
+        photoUrl: finalPhotoUrl,
+      );
+
+      // Step 3: Clear local state on success
+      _profileImageBytes = null;
+      if (!mounted) return;
+      setState(() {
+        _isEditing = false;
+        _isSaving = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated!'),
+          content: Text('Profile updated successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Save failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final current = _currentPasswordController.text.trim();
+    final newPw = _newPasswordController.text.trim();
+    if (current.isEmpty || newPw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in both password fields'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+    if (newPw.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New password must be at least 6 characters'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+    setState(() => _isChangingPassword = true);
+    try {
+      final p = Provider.of<AppProvider>(context, listen: false);
+      final ok = await p.authService.changePassword(current, newPw);
+      if (!mounted) return;
+      if (ok) {
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password changed successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Current password is incorrect'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password change failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isChangingPassword = false);
     }
   }
 
@@ -219,31 +334,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       width: 3,
                                     ),
                                   ),
-                                  child: _photoUrl != null &&
-                                          _photoUrl!.isNotEmpty
+                                  child: _profileImageBytes != null
                                       ? ClipRRect(
                                           borderRadius:
                                               BorderRadius.circular(50),
-                                          child: _photoUrl!.startsWith('http')
-                                              ? Image.network(
-                                                  _photoUrl!,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      const Icon(Icons.person,
-                                                          size: 40,
-                                                          color: Colors.grey),
-                                                )
-                                              : Image.file(
-                                                  File(_photoUrl!),
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      const Icon(Icons.person,
-                                                          size: 40,
-                                                          color: Colors.grey),
-                                                ),
+                                          child: Image.memory(
+                                            _profileImageBytes!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) =>
+                                                const Icon(Icons.person,
+                                                    size: 40,
+                                                    color: Colors.grey),
+                                          ),
                                         )
-                                      : const Icon(Icons.person_rounded,
-                                          size: 44, color: Colors.grey),
+                                      : _photoUrl != null &&
+                                              _photoUrl!.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(50),
+                                              child: Image.network(
+                                                _photoUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) =>
+                                                    const Icon(Icons.person,
+                                                        size: 40,
+                                                        color: Colors.grey),
+                                              ),
+                                            )
+                                          : const Icon(Icons.person_rounded,
+                                              size: 44, color: Colors.grey),
                                 ),
                               ),
                               if (_isEditing)
@@ -425,6 +544,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       (v) => setState(() => _selectedSex = v),
                                 ),
                                 const SizedBox(height: 20),
+                                const Divider(),
+                                const SizedBox(height: 8),
+                                const Text('Change Password',
+                                    style: AppTextStyles.h3),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _currentPasswordController,
+                                  obscureText: _obscureCurrent,
+                                  decoration: InputDecoration(
+                                    labelText: 'Current Password',
+                                    prefixIcon: const Icon(Icons.lock_outline,
+                                        color: AppColors.primary),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(_obscureCurrent
+                                          ? Icons.visibility_off
+                                          : Icons.visibility),
+                                      onPressed: () => setState(
+                                          () => _obscureCurrent = !_obscureCurrent),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(14),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                TextFormField(
+                                  controller: _newPasswordController,
+                                  obscureText: _obscureNew,
+                                  decoration: InputDecoration(
+                                    labelText: 'New Password',
+                                    prefixIcon: const Icon(Icons.lock_rounded,
+                                        color: AppColors.primary),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(_obscureNew
+                                          ? Icons.visibility_off
+                                          : Icons.visibility),
+                                      onPressed: () => setState(
+                                          () => _obscureNew = !_obscureNew),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(14),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                  ),
+                                ),
+                                if (_isChangingPassword)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                  )
+                                else
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: _changePassword,
+                                        icon: const Icon(Icons.key_rounded,
+                                            size: 18),
+                                        label:
+                                            const Text('Update Password'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 12),
+                                const Divider(),
+                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Expanded(
@@ -440,15 +639,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                           padding:
                                               const EdgeInsets.symmetric(
-                                                  vertical: 14),
+                                                  vertical: 16),
+                                          side: const BorderSide(
+                                              color: AppColors.primary),
                                         ),
-                                        child: const Text('Cancel'),
+                                        child: const Text('Cancel',
+                                            style: TextStyle(
+                                                color: AppColors.primary)),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: ElevatedButton(
-                                        onPressed: _save,
+                                        onPressed: _isSaving ? null : _save,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppColors.primary,
                                           foregroundColor: Colors.white,
@@ -458,10 +661,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                           padding:
                                               const EdgeInsets.symmetric(
-                                                  vertical: 14),
+                                                  vertical: 16),
                                           elevation: 0,
                                         ),
-                                        child: const Text('Save Changes'),
+                                        child: _isSaving
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : const Text('Save Updates'),
                                       ),
                                     ),
                                   ],

@@ -34,8 +34,8 @@ class _EnhancedAuthScreenState extends State<EnhancedAuthScreen> {
     setState(() => _isLoading = true);
     try {
       final p = Provider.of<AppProvider>(context, listen: false);
-      final ok = await p.login(email, password, false);
-      if (ok && mounted) {
+      final role = await p.login(email, password);
+      if (role != null && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );

@@ -8,130 +8,105 @@ class AuthService {
   static const String _loggedInKey = 'logged_in_student';
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Future<bool> login(String id, String password, bool isAdmin) async {
+  /// Unified login — auto-detects admin vs student.
+  /// Returns 'student', 'admin', or null on failure.
+  Future<String?> login(String id, String password) async {
     try {
-      if (isAdmin && id == 'ADMIN' && password == 'ADMIN123') {
-        // Admin login - ensure Firebase Auth user exists, then sign in.
-        // First try creating the admin user (succeeds if doesn't exist, throws if exists).
+      // Admin: exact match on ADMIN/ADMIN123
+      if (id == 'ADMIN' && password == 'ADMIN123') {
         try {
           await _auth.createUserWithEmailAndPassword(
             email: 'admin@grade.com',
             password: 'ADMIN123',
           );
         } on FirebaseAuthException catch (e) {
-          if (e.code != 'email-already-in-use') {
-            print('Unexpected error creating admin: $e');
-          }
+          if (e.code != 'email-already-in-use') rethrow;
         }
 
-        // Now sign in (should work whether we just created or it already existed)
-        try {
-          final result = await _auth.signInWithEmailAndPassword(
-            email: 'admin@grade.com',
-            password: 'ADMIN123',
+        final result = await _auth.signInWithEmailAndPassword(
+          email: 'admin@grade.com',
+          password: 'ADMIN123',
+        );
+        if (result.user != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+            _loggedInKey,
+            jsonEncode({'username': 'ADMIN', 'role': 'admin', 'uid': result.user!.uid}),
           );
-          if (result.user != null) {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(
-              _loggedInKey,
-              jsonEncode({'username': 'ADMIN', 'role': 'admin', 'uid': result.user!.uid}),
-            );
-            return true;
-          }
-        } on FirebaseAuthException catch (e) {
-          print('Admin sign-in error: $e');
+          return 'admin';
         }
-    } else {
-        // Student login - check Firestore first
-        print('Attempting student login for ID: $id');
-        final studentDoc = await _firestore
+        return null;
+      }
+
+      // Student: look up by student_id or email
+      final studentQuery = await _firestore
+          .collection('students')
+          .where('student_id', isEqualTo: id)
+          .limit(1)
+          .get();
+
+      QuerySnapshot? emailQuery;
+      if (id.contains('@')) {
+        emailQuery = await _firestore
             .collection('students')
-            .where('student_id', isEqualTo: id)
+            .where('email', isEqualTo: id)
             .limit(1)
             .get();
-
-        // Also try email lookup if input contains @
-        QuerySnapshot? emailDoc;
-        if (id.contains('@')) {
-          emailDoc = await _firestore
-              .collection('students')
-              .where('email', isEqualTo: id)
-              .limit(1)
-              .get();
-        }
-
-        final targetDoc = studentDoc.docs.isNotEmpty
-            ? studentDoc.docs.first
-            : (emailDoc != null && emailDoc.docs.isNotEmpty)
-                ? emailDoc.docs.first
-                : null;
-
-        print('Found student: ${targetDoc != null}');
-
-        if (targetDoc != null) {
-          final studentData = targetDoc.data() as Map<String, dynamic>;
-          final email = studentData['email'] as String?;
-          final storedPassword = studentData['password'] as String?;
-
-          print('Student data - Email: $email');
-          print('Password match: ${storedPassword == password}');
-
-          if (email != null && storedPassword == password) {
-            // First, ensure Firebase Auth user exists (create if missing).
-            try {
-              await _auth.createUserWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-            } on FirebaseAuthException catch (_) {
-              // Ignore — user already exists
-            }
-
-            // Now sign in (works whether we just created or it existed).
-            try {
-              final result = await _auth.signInWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-
-              if (result.user != null) {
-                // Update Firestore with the UID
-                await _firestore
-                    .collection('students')
-                    .doc(targetDoc.id)
-                    .update({'uid': result.user!.uid});
-
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString(
-                  _loggedInKey,
-                  jsonEncode({
-                    ...studentData,
-                    'role': 'student',
-                    'uid': result.user!.uid,
-                  }),
-                );
-                return true;
-              }
-            } on FirebaseAuthException catch (e) {
-              if (e.code == 'wrong-password') {
-                try {
-                  await _auth.sendPasswordResetEmail(email: email);
-                } catch (_) {}
-              } else {
-                print('Student login Firebase error: $e');
-              }
-            }
-          } else {
-            print('Password mismatch for student: $id');
-          }
-        } else {
-          print('No student found with ID/email: $id');
-        }
       }
+
+      final targetDoc = studentQuery.docs.isNotEmpty
+          ? studentQuery.docs.first
+          : (emailQuery != null && emailQuery.docs.isNotEmpty)
+              ? emailQuery.docs.first
+              : null;
+
+      if (targetDoc == null) return null;
+
+      final studentData = targetDoc.data() as Map<String, dynamic>;
+      final email = studentData['email'] as String?;
+      final storedPassword = studentData['password'] as String?;
+
+      if (email == null || storedPassword != password) return null;
+
+      // Ensure Firebase Auth user exists
+      try {
+        await _auth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (_) {}
+
+      final result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (result.user == null) return null;
+
+      await _firestore
+          .collection('students')
+          .doc(targetDoc.id)
+          .update({'uid': result.user!.uid});
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _loggedInKey,
+        jsonEncode({
+          ...studentData,
+          'role': 'student',
+          'uid': result.user!.uid,
+        }),
+      );
+      return 'student';
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        try {
+          await _auth.sendPasswordResetEmail(email: 'admin@grade.com');
+        } catch (_) {}
+      }
+      return null;
     } catch (e) {
-      print('Firebase login error: $e');
+      return null;
     }
-    return false;
   }
 
   Future<void> logout() async {

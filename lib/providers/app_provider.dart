@@ -64,20 +64,21 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> login(String id, String password, bool isAdmin) async {
+  /// Returns 'student', 'admin', or null on failure.
+  Future<String?> login(String id, String password) async {
     _isLoading = true;
     notifyListeners();
 
-    final success = await _authService.login(id, password, isAdmin);
+    final role = await _authService.login(id, password);
 
-    if (success) {
+    if (role != null) {
       final userData = await _authService.getCurrentUser();
       if (userData != null) {
-        if (isAdmin) {
-          _currentStudent = null;
-        } else {
+        if (role == 'student') {
           _currentStudent = Student.fromMap(userData);
           await loadStudentData();
+        } else {
+          _currentStudent = null;
         }
       }
       _isLoggedIn = true;
@@ -85,7 +86,7 @@ class AppProvider with ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
-    return success;
+    return role;
   }
 
   Future<void> logout() async {
@@ -218,14 +219,18 @@ class AppProvider with ChangeNotifier {
     int? age,
     String? photoUrl,
   }) async {
-    if (_currentStudent == null) {
-      print('Error: No current student to update');
-      return;
-    }
+    if (_currentStudent == null) return;
 
-    print(
-      'Updating student profile with: fullName=$fullName, sex=$sex, phone=$phone, age=$age, photoUrl=$photoUrl',
-    );
+    final updates = <String, dynamic>{
+      'full_name': fullName ?? _currentStudent!.fullName,
+      'sex': sex ?? _currentStudent!.sex,
+      'phone': phone ?? _currentStudent!.phone,
+      'age': age ?? _currentStudent!.age,
+    };
+    // Use the provided photoUrl even if null (to clear the photo)
+    if (updates.containsKey('photo_url') || photoUrl != _currentStudent!.photoUrl) {
+      updates['photo_url'] = photoUrl;
+    }
 
     final updatedStudent = _currentStudent!.copyWith(
       fullName: fullName,
@@ -235,26 +240,15 @@ class AppProvider with ChangeNotifier {
       photoUrl: photoUrl,
     );
 
-    print('Updated student object: ${updatedStudent.toMap()}');
-
     try {
-      // Update with real-time sync
       await _realtimeService.updateStudentWithSync(
         studentId: _currentStudent!.studentId,
-        updates: {
-          'full_name': fullName ?? _currentStudent!.fullName,
-          'sex': sex ?? _currentStudent!.sex,
-          'phone': phone ?? _currentStudent!.phone,
-          'age': age ?? _currentStudent!.age,
-          'photo_url': photoUrl ?? _currentStudent!.photoUrl,
-        },
+        updates: updates,
       );
-      
+
       _currentStudent = updatedStudent;
       notifyListeners();
-      print('Student profile updated successfully with real-time sync');
     } catch (e) {
-      print('Error updating student profile: $e');
       rethrow;
     }
   }

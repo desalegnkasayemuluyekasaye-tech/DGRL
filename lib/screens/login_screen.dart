@@ -17,12 +17,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _studentIdController = TextEditingController();
+  final _idController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
   String? _errorMessage;
-  bool _isAdmin = false;
   late AnimationController _animController;
   late Animation<double> _fadeIn;
 
@@ -42,37 +41,34 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _studentIdController.dispose();
+    _idController.dispose();
     _passwordController.dispose();
     _animController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _handleSignIn() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _errorMessage = null);
 
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final success = await provider.login(
-      _studentIdController.text.trim(),
+    final role = await provider.login(
+      _idController.text.trim(),
       _passwordController.text,
-      _isAdmin,
     );
 
     if (!mounted) return;
-    if (success) {
+
+    if (role == 'student') {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) =>
-              _isAdmin ? const AdminPanelScreen() : const MainScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    } else if (role == 'admin') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
       );
     } else {
-      setState(() {
-        _errorMessage = _isAdmin
-            ? 'Invalid Admin ID or Password'
-            : 'Invalid University ID or Password';
-      });
+      setState(() => _errorMessage = 'Invalid ID/Email or Password');
     }
   }
 
@@ -158,25 +154,12 @@ class _LoginScreenState extends State<LoginScreen>
                       key: _formKey,
                       child: Column(
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _roleButton('Student', false),
-                              const SizedBox(width: 12),
-                              _roleButton('Admin', true),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
                           TextFormField(
-                            controller: _studentIdController,
+                            controller: _idController,
                             decoration: InputDecoration(
-                              labelText: _isAdmin
-                                  ? 'Admin Username'
-                                  : 'University ID',
-                              prefixIcon: Icon(
-                                _isAdmin
-                                    ? Icons.admin_panel_settings
-                                    : Icons.person_outline,
+                              labelText: 'ID or Email',
+                              prefixIcon: const Icon(
+                                Icons.person_outline,
                                 color: AppColors.primary,
                               ),
                               filled: true,
@@ -264,24 +247,23 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 ],
                               ),
-                              if (!_isAdmin)
-                                GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ForgotPasswordScreen(),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Forgot password?',
-                                    style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordScreen(),
                                   ),
                                 ),
+                                child: const Text(
+                                  'Forgot password?',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           if (_errorMessage != null) ...[
@@ -329,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     elevation: 0,
                                   ),
                                   onPressed:
-                                      provider.isLoading ? null : _login,
+                                      provider.isLoading ? null : _handleSignIn,
                                   child: provider.isLoading
                                       ? const SizedBox(
                                           height: 22,
@@ -356,30 +338,29 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                   const SizedBox(height: 24),
-                  if (!_isAdmin)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Don't have an account? ",
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 13,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _contactAdmin,
+                        child: const Text(
+                          'Contact Admin',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
                             fontSize: 13,
                           ),
                         ),
-                        GestureDetector(
-                          onTap: _contactAdmin,
-                          child: const Text(
-                            'Contact Admin',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 32),
                   Text(
                     'v1.0.0',
@@ -391,31 +372,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _roleButton(String label, bool isAdmin) {
-    final active = _isAdmin == isAdmin;
-    return GestureDetector(
-      onTap: () => setState(() => _isAdmin = isAdmin),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        decoration: BoxDecoration(
-          color: active ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active ? AppColors.primary : Colors.grey.shade300,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : AppColors.textSecondary,
-            fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
           ),
         ),
       ),

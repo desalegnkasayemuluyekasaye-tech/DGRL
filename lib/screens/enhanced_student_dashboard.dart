@@ -131,7 +131,44 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
               MaterialPageRoute(builder: (_) => const NotificationScreen()),
             ),
           ),
+          const SizedBox(width: 4),
+          _profileAvatar(provider),
         ],
+      ),
+    );
+  }
+
+  Widget _profileAvatar(AppProvider provider) {
+    final student = provider.currentStudent;
+    final photoUrl = student?.photoUrl;
+    final name = student?.fullName ?? '?';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    return GestureDetector(
+      onTap: () => _navigateToTab(4),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: photoUrl != null && photoUrl.isNotEmpty
+            ? CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage: NetworkImage(photoUrl),
+              )
+            : CircleAvatar(
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
       ),
     );
   }

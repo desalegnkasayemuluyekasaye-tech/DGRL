@@ -96,12 +96,12 @@ class GradeBreakdownScreen extends StatelessWidget {
                 children: [
                   const Text('Score Breakdown', style: AppTextStyles.h3),
                   const SizedBox(height: 20),
-                  _breakdownBar('Mid Exam (25%)', grade.midScore, 25, AppColors.info),
+                  _breakdownBar('Mid Exam', grade.midScore, 100, AppColors.info),
                   const SizedBox(height: 14),
-                  _breakdownBar('Assignment (25%)', grade.assignmentScore, 25,
+                  _breakdownBar('Assignment', grade.assignmentScore, 100,
                       AppColors.success),
                   const SizedBox(height: 14),
-                  _breakdownBar('Final Exam (50%)', grade.finalScore, 50,
+                  _breakdownBar('Final Exam', grade.finalScore, 100,
                       AppColors.warning),
                   const SizedBox(height: 20),
                   Container(

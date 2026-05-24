@@ -55,7 +55,7 @@ class Grade {
     if (total >= 60) return 'C+';
     if (total >= 55) return 'C';
     if (total >= 50) return 'C-';
-    if (total >= 45) return 'D';
+    if (total >= 40) return 'D';
     return 'F';
   }
 
@@ -65,19 +65,19 @@ class Grade {
       case 'A':
         return 4.0;
       case 'A-':
-        return 3.7;
+        return 3.75;
       case 'B+':
-        return 3.3;
+        return 3.5;
       case 'B':
         return 3.0;
       case 'B-':
-        return 2.7;
+        return 2.75;
       case 'C+':
-        return 2.3;
+        return 2.5;
       case 'C':
         return 2.0;
       case 'C-':
-        return 1.7;
+        return 1.75;
       case 'D':
         return 1.0;
       default:
@@ -86,6 +86,7 @@ class Grade {
   }
 
   // Factory method for creating grade with automatic calculations
+  // Total Score = Mid-term + Assignment + Final Exam (each out of their max)
   factory Grade.create({
     required String studentId,
     required String courseCode,
@@ -94,7 +95,7 @@ class Grade {
     required double finalScore,
     required String semester,
   }) {
-    final totalScore = (midScore * 0.3) + (assignmentScore * 0.3) + (finalScore * 0.4);
+    final totalScore = midScore + assignmentScore + finalScore;
     final letterGrade = calculateLetterGrade(totalScore);
     
     return Grade(
@@ -119,7 +120,7 @@ class Grade {
     final newAssignmentScore = assignmentScore ?? this.assignmentScore;
     final newFinalScore = finalScore ?? this.finalScore;
     
-    final newTotalScore = (newMidScore * 0.3) + (newAssignmentScore * 0.3) + (newFinalScore * 0.4);
+    final newTotalScore = newMidScore + newAssignmentScore + newFinalScore;
     final newLetterGrade = calculateLetterGrade(newTotalScore);
     
     return Grade(

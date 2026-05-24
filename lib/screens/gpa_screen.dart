@@ -395,7 +395,10 @@ class _GPAScreenState extends State<GPAScreen>
           Row(
             children: [
               _statCard(
-                  'Total Credits', '${provider.grades.length * 3}',
+                  'Total Credits', '${provider.grades.fold<int>(0, (sum, g) {
+                    final c = provider.getCourseInfo(g.courseCode);
+                    return sum + (c?.creditHours ?? 3);
+                  })}',
                   Icons.school_rounded, AppColors.info),
               const SizedBox(width: 10),
               _statCard('CGPA', provider.cgpa.toStringAsFixed(2),

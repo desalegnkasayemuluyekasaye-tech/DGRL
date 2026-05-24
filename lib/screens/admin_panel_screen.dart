@@ -29,6 +29,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   List<Student> _students = [];
   List<Course> _courses = [];
+  List<String> _courseDocIds = [];
   List<Map<String, dynamic>> _grades = [];
   String? _selectedStudentId;
 
@@ -50,8 +51,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _loadCourses() async {
-    final c = await _courseService.getAllCourses();
-    setState(() => _courses = c);
+    final coursesWithIds = await _courseService.getAllCoursesWithIds();
+    final courseList = <Course>[];
+    final idList = <String>[];
+    for (final map in coursesWithIds) {
+      courseList.add(Course.fromMap(map));
+      idList.add(map['_id'] as String);
+    }
+    setState(() {
+      _courses = courseList;
+      _courseDocIds = idList;
+    });
   }
 
   Future<void> _loadGrades() async {
@@ -709,6 +719,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _showEditCourseDialog(Course c) {
+    final idx = _courses.indexWhere((crs) => crs.courseCode == c.courseCode);
+    final docId = idx >= 0 ? _courseDocIds[idx] : null;
+
     final titleC = TextEditingController(text: c.courseTitle);
     final creditsC =
         TextEditingController(text: c.creditHours.toString());
@@ -742,7 +755,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.info, foregroundColor: Colors.white),
             onPressed: () async {
-              // Firestore update by course code
+              if (docId != null) {
+                await _courseService.updateCourse(docId, Course(
+                  courseCode: c.courseCode,
+                  courseTitle: titleC.text,
+                  creditHours: int.tryParse(creditsC.text) ?? 3,
+                  instructor: instrC.text,
+                  semester: semC.text,
+                  department: deptC.text,
+                  schedule: c.schedule,
+                  isActive: c.isActive,
+                  maxCapacity: c.maxCapacity,
+                  currentEnrolled: c.currentEnrolled,
+                  prerequisites: c.prerequisites,
+                  room: c.room,
+                  building: c.building,
+                ));
+              }
               _snack('Course updated', ok: true);
               Navigator.pop(ctx);
               await _loadCourses();
@@ -755,6 +784,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   void _confirmDeleteCourse(String code) {
+    final idx = _courses.indexWhere((c) => c.courseCode == code);
+    final docId = idx >= 0 ? _courseDocIds[idx] : null;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -767,6 +799,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
+              if (docId != null) {
+                await _courseService.deleteCourse(docId);
+              }
               _snack('Course deleted');
               Navigator.pop(ctx);
               await _loadCourses();

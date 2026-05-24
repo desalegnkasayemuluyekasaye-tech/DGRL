@@ -54,6 +54,20 @@ class CourseService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getAllCoursesWithIds() async {
+    try {
+      final querySnapshot = await _coursesCollection.get();
+      return querySnapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+        data['_id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Get courses with IDs error: $e');
+      return [];
+    }
+  }
+
   Future<Course?> getCourse(String courseCode) async {
     try {
       final querySnapshot = await _coursesCollection

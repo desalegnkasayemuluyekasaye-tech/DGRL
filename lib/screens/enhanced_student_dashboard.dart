@@ -241,7 +241,10 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
               const SizedBox(width: 12),
               _overviewItem('CGPA', provider.cgpa.toStringAsFixed(2), Icons.school),
               const SizedBox(width: 12),
-              _overviewItem('Credits', '${provider.grades.length * 3}', Icons.book),
+              _overviewItem('Credits', '${provider.grades.fold<int>(0, (sum, g) {
+                final c = provider.getCourseInfo(g.courseCode);
+                return sum + (c?.creditHours ?? 3);
+              })}', Icons.book),
             ],
           ),
         ],

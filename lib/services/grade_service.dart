@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/grade.dart';
 import '../models/course.dart';
+import '../services/course_service.dart';
 import 'notification_service.dart';
 
 class GradeService {
@@ -8,6 +9,7 @@ class GradeService {
       FirebaseFirestore.instance.collection('grades');
   final CollectionReference _coursesCollection = 
       FirebaseFirestore.instance.collection('courses');
+  final CourseService _courseService = CourseService();
 
   Future<List<Grade>> getGradesForStudent(String studentId) async {
     try {
@@ -91,6 +93,7 @@ class GradeService {
       );
       
       await _gradesCollection.add(grade.toMap());
+      await _notifyStudentNewGrade(grade);
       return true;
     } catch (e) {
       print('Add grade with scores error: $e');
@@ -135,9 +138,10 @@ class GradeService {
       int totalCredits = 0;
       
       for (var grade in semesterGrades) {
-        final gradePoint = _getGradePoint(grade.finalScore);
-        totalPoints += gradePoint * 3; // Assuming 3 credit hours per course
-        totalCredits += 3;
+        final course = await _courseService.getCourse(grade.courseCode);
+        final creditHours = course?.creditHours ?? 3;
+        totalPoints += Grade.gradePoint(grade.letterGrade) * creditHours;
+        totalCredits += creditHours;
       }
       
       return totalCredits > 0 ? totalPoints / totalCredits : 0.0;
@@ -145,19 +149,6 @@ class GradeService {
       print('Calculate GPA error: $e');
       return 0.0;
     }
-  }
-  
-  double _getGradePoint(double score) {
-    if (score >= 90) return 4.0;
-    if (score >= 85) return 3.75;
-    if (score >= 80) return 3.5;
-    if (score >= 75) return 3.25;
-    if (score >= 70) return 3.0;
-    if (score >= 65) return 2.75;
-    if (score >= 60) return 2.5;
-    if (score >= 55) return 2.25;
-    if (score >= 50) return 2.0;
-    return 0.0;
   }
 
   Future<double> calculateCGPA(String studentId) async {
@@ -173,9 +164,10 @@ class GradeService {
       
       for (var doc in querySnapshot.docs) {
         final grade = Grade.fromMap(doc.data() as Map<String, dynamic>);
-        final gradePoint = _getGradePoint(grade.finalScore);
-        totalPoints += gradePoint * 3; // Assuming 3 credit hours per course
-        totalCredits += 3;
+        final course = await _courseService.getCourse(grade.courseCode);
+        final creditHours = course?.creditHours ?? 3;
+        totalPoints += Grade.gradePoint(grade.letterGrade) * creditHours;
+        totalCredits += creditHours;
       }
       
       return totalCredits > 0 ? totalPoints / totalCredits : 0.0;

@@ -11,14 +11,25 @@ class AuthService {
   Future<bool> login(String id, String password, bool isAdmin) async {
     try {
       if (isAdmin && id == 'ADMIN' && password == 'ADMIN123') {
-        // Admin login - create user if doesn't exist, then sign in
+        // Admin login - ensure Firebase Auth user exists, then sign in.
+        // First try creating the admin user (succeeds if doesn't exist, throws if exists).
         try {
-          // Try to sign in first
+          await _auth.createUserWithEmailAndPassword(
+            email: 'admin@grade.com',
+            password: 'ADMIN123',
+          );
+        } on FirebaseAuthException catch (e) {
+          if (e.code != 'email-already-in-use') {
+            print('Unexpected error creating admin: $e');
+          }
+        }
+
+        // Now sign in (should work whether we just created or it already existed)
+        try {
           final result = await _auth.signInWithEmailAndPassword(
             email: 'admin@grade.com',
             password: 'ADMIN123',
           );
-          
           if (result.user != null) {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(
@@ -28,28 +39,7 @@ class AuthService {
             return true;
           }
         } on FirebaseAuthException catch (e) {
-          if (e.code == 'user-not-found') {
-            // Create admin user if it doesn't exist
-            try {
-              final result = await _auth.createUserWithEmailAndPassword(
-                email: 'admin@grade.com',
-                password: 'ADMIN123',
-              );
-              
-              if (result.user != null) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString(
-                  _loggedInKey,
-                  jsonEncode({'username': 'ADMIN', 'role': 'admin', 'uid': result.user!.uid}),
-                );
-                return true;
-              }
-            } on FirebaseAuthException catch (createError) {
-              print('Error creating admin user: $createError');
-            }
-          } else {
-            print('Admin login error: $e');
-          }
+          print('Admin sign-in error: $e');
         }
     } else {
         // Student login - check Firestore first
@@ -87,14 +77,30 @@ class AuthService {
           print('Password match: ${storedPassword == password}');
 
           if (email != null && storedPassword == password) {
+            // First, ensure Firebase Auth user exists (create if missing).
             try {
-              // Try to sign in with Firebase Auth
+              await _auth.createUserWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+            } on FirebaseAuthException catch (_) {
+              // Ignore — user already exists
+            }
+
+            // Now sign in (works whether we just created or it existed).
+            try {
               final result = await _auth.signInWithEmailAndPassword(
                 email: email,
                 password: password,
               );
 
               if (result.user != null) {
+                // Update Firestore with the UID
+                await _firestore
+                    .collection('students')
+                    .doc(targetDoc.id)
+                    .update({'uid': result.user!.uid});
+
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString(
                   _loggedInKey,
@@ -107,39 +113,10 @@ class AuthService {
                 return true;
               }
             } on FirebaseAuthException catch (e) {
-              // Handle both 'user-not-found' and 'invalid-credential'
-              if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
-                // Create Firebase Auth user for student if it doesn't exist
+              if (e.code == 'wrong-password') {
                 try {
-                  final result = await _auth.createUserWithEmailAndPassword(
-                    email: email,
-                    password: password,
-                  );
-
-                  if (result.user != null) {
-                    // Update Firestore with the UID
-                    await _firestore
-                        .collection('students')
-                        .doc(targetDoc.id)
-                        .update({'uid': result.user!.uid});
-
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setString(
-                      _loggedInKey,
-                      jsonEncode({
-                        ...studentData,
-                        'role': 'student',
-                        'uid': result.user!.uid,
-                      }),
-                    );
-                    return true;
-                  }
-                } on FirebaseAuthException catch (createError) {
-                  print('Error creating student Firebase user: $createError');
-                  if (createError.code == 'weak-password') {
-                    print('Password is too weak for Firebase Auth.');
-                  }
-                }
+                  await _auth.sendPasswordResetEmail(email: email);
+                } catch (_) {}
               } else {
                 print('Student login Firebase error: $e');
               }

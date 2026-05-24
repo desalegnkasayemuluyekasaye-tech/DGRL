@@ -198,7 +198,7 @@ class AppProvider with ChangeNotifier {
   
   // Method to refresh all student data (called when admin adds data)
   Future<void> refreshStudentData() async {
-    if (_currentStudent != null && !_isLoggedIn) return;
+    if (_currentStudent == null) return;
     
     await loadStudentData();
   }

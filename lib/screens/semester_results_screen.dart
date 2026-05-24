@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../constants/theme_constants.dart';
 import 'grade_breakdown_screen.dart';
 
 class SemesterResultsScreen extends StatefulWidget {
-  const SemesterResultsScreen({super.key, this.scaffoldKey, this.onNavigate});
-
-  final GlobalKey<ScaffoldState>? scaffoldKey;
-  final Function(int)? onNavigate;
+  const SemesterResultsScreen({super.key});
 
   @override
   State<SemesterResultsScreen> createState() => _SemesterResultsScreenState();
@@ -33,308 +31,183 @@ class _SemesterResultsScreenState extends State<SemesterResultsScreen>
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF3949AB), Color(0xFF2196F3)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              color: AppColors.primary,
+              child: const Row(
+                children: [
+                  Icon(Icons.assessment_rounded, color: Colors.white, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'Grade Report',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.only(
-                  top: 40,
-                  left: 16,
-                  right: 16,
-                  bottom: 8,
-                ),
-                color: const Color(0xFF3949AB),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Grade Screen',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            Container(
+              color: AppColors.primary,
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14),
+                tabs: const [
+                  Tab(text: 'Overall'),
+                  Tab(text: 'By Semester'),
+                ],
               ),
-              // Tabs
-              Container(
-                color: const Color(0xFF3949AB),
-                child: TabBar(
+            ),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: TabBarView(
                   controller: _tabController,
-                  indicatorColor: Colors.white,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white70,
-                  tabs: const [
-                    Tab(text: 'Overall Grade'),
-                    Tab(text: 'Semester Grade'),
+                  children: [
+                    _buildOverallTab(provider),
+                    _buildSemesterTab(provider),
                   ],
                 ),
               ),
-              // Tab Content
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOverallGradeTab(provider),
-                      _buildSemesterGradeTab(provider),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildGPACard(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF3949AB),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getGradeColor(String letterGrade) {
-    switch (letterGrade) {
-      case 'A+':
-      case 'A':
-        return Colors.green;
-      case 'A-':
-        return Colors.teal;
-      case 'B+':
-      case 'B':
-        return Colors.blue;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  Widget _buildOverallGradeTab(AppProvider provider) {
+  Widget _buildOverallTab(AppProvider provider) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Overall GPA Summary
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3949AB), Color(0xFF2196F3)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
+            padding: const EdgeInsets.all(24),
+            decoration: AppTheme.gradientCard,
+            child: Row(
               children: [
-                const Text(
-                  'Overall Performance',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.cgpa.toStringAsFixed(2),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text('Cumulative GPA',
+                          style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            provider.cgpa.toStringAsFixed(2),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'CGPA',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${provider.grades.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 60,
-                      color: Colors.white30,
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            '${provider.grades.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Total Courses',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                      const Text('Total Courses',
+                          style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          // All Grades List
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'All Grades',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3949AB),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('All Courses', style: AppTextStyles.h3),
+              Text(
+                '${provider.grades.length} entries',
+                style: AppTextStyles.caption,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           ...provider.grades.map((grade) {
             final course = provider.getCourseInfo(grade.courseCode);
             return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GradeBreakdownScreen(
-                      grade: grade,
-                      course: course,
-                    ),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GradeBreakdownScreen(
+                    grade: grade,
+                    course: course,
                   ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      spreadRadius: 2,
-                      blurRadius: 4,
-                    ),
-                  ],
                 ),
+              ),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(16),
+                decoration: AppTheme.whiteCard,
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3949AB).withValues(alpha: 0.1),
+                        color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.book,
-                        color: Color(0xFF3949AB),
-                      ),
+                      child: const Icon(Icons.book_rounded,
+                          color: AppColors.primary, size: 22),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            grade.courseCode,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            course?.courseTitle ?? '',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            grade.semester,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                            ),
-                          ),
+                          Text(grade.courseCode,
+                              style: AppTextStyles.body),
+                          Text(course?.courseTitle ?? '',
+                              style: AppTextStyles.caption),
+                          Text(grade.semester,
+                              style: AppTextStyles.caption),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: _getGradeColor(grade.letterGrade),
+                        color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         children: [
-                          Text(
-                            grade.letterGrade,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
+                          Text(grade.letterGrade,
+                              style: AppTextStyles.gradeColor(grade.letterGrade)),
                           Text(
                             grade.totalScore.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                            style: TextStyle(
+                              color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                                  .withValues(alpha: 0.7),
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -350,59 +223,43 @@ class _SemesterResultsScreenState extends State<SemesterResultsScreen>
     );
   }
 
-  Widget _buildSemesterGradeTab(AppProvider provider) {
+  Widget _buildSemesterTab(AppProvider provider) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Semester Selection
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3949AB).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: AppTheme.outlinedCard,
             child: Row(
               children: [
-                const Icon(Icons.school, color: Color(0xFF3949AB)),
+                const Icon(Icons.school_rounded, color: AppColors.primary),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Select Semester',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
+                const Text('Select Semester',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3949AB),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: DropdownButton<String>(
                     value: provider.semesters.isNotEmpty
                         ? provider.selectedSemester
                         : null,
                     underline: const SizedBox(),
-                    dropdownColor: Colors.white,
-                    style: const TextStyle(color: Colors.white),
-                    icon: const Icon(
-                      Icons.arrow_drop_down,
-                      color: Colors.white,
-                    ),
-                    items: provider.semesters.map((semester) {
+                    dropdownColor: AppColors.primary,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    icon:
+                        const Icon(Icons.arrow_drop_down, color: Colors.white),
+                    items: provider.semesters.map((s) {
                       return DropdownMenuItem(
-                        value: semester,
-                        child: Text(
-                          semester,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
+                          value: s, child: Text(s));
                     }).toList(),
-                    onChanged: (value) {
-                      if (value != null) provider.selectSemester(value);
+                    onChanged: (v) {
+                      if (v != null) provider.selectSemester(v);
                     },
                   ),
                 ),
@@ -410,132 +267,128 @@ class _SemesterResultsScreenState extends State<SemesterResultsScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // Semester GPA Cards
           Row(
             children: [
               Expanded(
-                child: _buildGPACard(
-                  'Semester GPA',
-                  provider.selectedGPA.toStringAsFixed(2),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        provider.selectedGPA.toStringAsFixed(2),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text('Semester GPA',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildGPACard(
-                  'CGPA',
-                  provider.cgpa.toStringAsFixed(2),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        provider.cgpa.toStringAsFixed(2),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text('CGPA',
+                          style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Semester Grades List
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Semester Grades',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3949AB),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Semester Courses', style: AppTextStyles.h3),
+              Text(
+                '${provider.getGradesForSemester(provider.selectedSemester).length} courses',
+                style: AppTextStyles.caption,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-          ...provider.getGradesForSemester(provider.selectedSemester).map((grade) {
+          const SizedBox(height: 14),
+          ...provider
+              .getGradesForSemester(provider.selectedSemester)
+              .map((grade) {
             final course = provider.getCourseInfo(grade.courseCode);
             return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GradeBreakdownScreen(
-                      grade: grade,
-                      course: course,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      spreadRadius: 2,
-                      blurRadius: 4,
-                    ),
-                  ],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GradeBreakdownScreen(
+                      grade: grade, course: course),
                 ),
+              ),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(16),
+                decoration: AppTheme.whiteCard,
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3949AB).withValues(alpha: 0.1),
+                        color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.book,
-                        color: Color(0xFF3949AB),
-                      ),
+                      child: const Icon(Icons.book_rounded,
+                          color: AppColors.primary, size: 22),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            grade.courseCode,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            course?.courseTitle ?? '',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            '${course?.creditHours ?? 0} Credit Hours',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
+                          Text(grade.courseCode,
+                              style: AppTextStyles.body),
+                          Text(course?.courseTitle ?? '',
+                              style: AppTextStyles.caption),
+                          Text('${course?.creditHours ?? 0} Credits',
+                              style: AppTextStyles.caption),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: _getGradeColor(grade.letterGrade),
+                        color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         children: [
-                          Text(
-                            grade.letterGrade,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
+                          Text(grade.letterGrade,
+                              style: AppTextStyles.gradeColor(grade.letterGrade)),
                           Text(
                             grade.totalScore.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                            style: TextStyle(
+                              color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                                  .withValues(alpha: 0.7),
+                              fontSize: 11,
                             ),
                           ),
                         ],

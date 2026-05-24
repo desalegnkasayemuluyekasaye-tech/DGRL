@@ -74,14 +74,8 @@ class CourseService {
   // Advanced Course Management
   Future<List<Course>> getCoursesBySemester(String semester) async {
     try {
-      final querySnapshot = await _coursesCollection
-          .where('semester', isEqualTo: semester)
-          .where('is_active', isEqualTo: true)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => Course.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
+      final allCourses = await getAllCourses();
+      return allCourses.where((c) => c.semester == semester).toList();
     } catch (e) {
       print('Get courses by semester error: $e');
       return [];
@@ -90,14 +84,8 @@ class CourseService {
 
   Future<List<Course>> getCoursesByDepartment(String department) async {
     try {
-      final querySnapshot = await _coursesCollection
-          .where('department', isEqualTo: department)
-          .where('is_active', isEqualTo: true)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => Course.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
+      final allCourses = await getAllCourses();
+      return allCourses.where((c) => c.department == department).toList();
     } catch (e) {
       print('Get courses by department error: $e');
       return [];
@@ -106,17 +94,8 @@ class CourseService {
 
   Future<List<Course>> getAvailableCourses(String semester) async {
     try {
-      final querySnapshot = await _coursesCollection
-          .where('semester', isEqualTo: semester)
-          .where('is_active', isEqualTo: true)
-          .get();
-      
-      final courses = querySnapshot.docs
-          .map((doc) => Course.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
-      
-      // Filter courses that have availability
-      return courses.where((course) => course.hasAvailability).toList();
+      final semesterCourses = await getCoursesBySemester(semester);
+      return semesterCourses.where((course) => course.hasAvailability).toList();
     } catch (e) {
       print('Get available courses error: $e');
       return [];
@@ -190,19 +169,22 @@ class CourseService {
 
   Future<List<CourseRegistration>> getStudentRegistrations(String studentId, {String? semester}) async {
     try {
-      Query query = _registrationsCollection
+      final querySnapshot = await _registrationsCollection
           .where('student_id', isEqualTo: studentId)
-          .where('is_active', isEqualTo: true);
+          .get();
       
-      if (semester != null) {
-        query = query.where('semester', isEqualTo: semester);
-      }
-
-      final querySnapshot = await query.get();
-      
-      return querySnapshot.docs
+      List<CourseRegistration> registrations = querySnapshot.docs
           .map((doc) => CourseRegistration.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
+      
+      // Filter active registrations client-side
+      registrations = registrations.where((r) => r.isActive).toList();
+      
+      if (semester != null) {
+        registrations = registrations.where((r) => r.semester == semester).toList();
+      }
+      
+      return registrations;
     } catch (e) {
       print('Get student registrations error: $e');
       return [];
@@ -211,17 +193,11 @@ class CourseService {
 
   Future<CourseRegistration?> getRegistration(String studentId, String courseCode, String semester) async {
     try {
-      final querySnapshot = await _registrationsCollection
-          .where('student_id', isEqualTo: studentId)
-          .where('course_code', isEqualTo: courseCode)
-          .where('semester', isEqualTo: semester)
-          .limit(1)
-          .get();
-      
-      if (querySnapshot.docs.isNotEmpty) {
-        return CourseRegistration.fromMap(querySnapshot.docs.first.data() as Map<String, dynamic>);
-      }
-      return null;
+      final registrations = await getStudentRegistrations(studentId);
+      final result = registrations.where(
+        (r) => r.courseCode == courseCode && r.semester == semester,
+      );
+      return result.isNotEmpty ? result.first : null;
     } catch (e) {
       print('Get registration error: $e');
       return null;

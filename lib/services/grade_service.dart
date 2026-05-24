@@ -13,12 +13,14 @@ class GradeService {
     try {
       final querySnapshot = await _gradesCollection
           .where('student_id', isEqualTo: studentId)
-          .orderBy('semester')
           .get();
       
-      return querySnapshot.docs
+      final grades = querySnapshot.docs
           .map((doc) => Grade.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
+      
+      grades.sort((a, b) => a.semester.compareTo(b.semester));
+      return grades;
     } catch (e) {
       print('Get grades error: $e');
       return [];
@@ -30,14 +32,8 @@ class GradeService {
     String semester,
   ) async {
     try {
-      final querySnapshot = await _gradesCollection
-          .where('student_id', isEqualTo: studentId)
-          .where('semester', isEqualTo: semester)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => Grade.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
+      final allGrades = await getGradesForStudent(studentId);
+      return allGrades.where((g) => g.semester == semester).toList();
     } catch (e) {
       print('Get semester grades error: $e');
       return [];
@@ -102,6 +98,22 @@ class GradeService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getGradesWithIds(String studentId) async {
+    try {
+      final querySnapshot = await _gradesCollection
+          .where('student_id', isEqualTo: studentId)
+          .get();
+      return querySnapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+        data['_id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Get grades with IDs error: $e');
+      return [];
+    }
+  }
+
   Future<bool> deleteGrade(String gradeId) async {
     try {
       await _gradesCollection.doc(gradeId).delete();
@@ -114,19 +126,15 @@ class GradeService {
 
   Future<double> calculateGPA(String studentId, String semester) async {
     try {
-      final querySnapshot = await _gradesCollection
-          .where('student_id', isEqualTo: studentId)
-          .where('semester', isEqualTo: semester)
-          .get();
+      final allGrades = await getGradesForStudent(studentId);
+      final semesterGrades = allGrades.where((g) => g.semester == semester).toList();
       
-      if (querySnapshot.docs.isEmpty) return 0.0;
+      if (semesterGrades.isEmpty) return 0.0;
       
       double totalPoints = 0.0;
       int totalCredits = 0;
       
-      for (var doc in querySnapshot.docs) {
-        final grade = Grade.fromMap(doc.data() as Map<String, dynamic>);
-        // Simple GPA calculation (can be enhanced)
+      for (var grade in semesterGrades) {
         final gradePoint = _getGradePoint(grade.finalScore);
         totalPoints += gradePoint * 3; // Assuming 3 credit hours per course
         totalCredits += 3;

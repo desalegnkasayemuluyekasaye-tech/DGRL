@@ -1,10 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RealtimeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
   // Listen for student data changes (admin -> student communication)
   Stream<DocumentSnapshot<Map<String, dynamic>>> listenToStudentData(String studentId) {
     return _firestore

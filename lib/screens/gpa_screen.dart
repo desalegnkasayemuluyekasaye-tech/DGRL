@@ -2,81 +2,65 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/grade.dart';
+import '../constants/theme_constants.dart';
 import 'grade_breakdown_screen.dart';
 
 class CircularGPAIndicator extends StatelessWidget {
-  const CircularGPAIndicator({
-    super.key,
-    required this.gpa,
-    required this.title,
-    this.subtitle,
-    this.size = 150.0,
-  });
-
   final double gpa;
   final String title;
   final String? subtitle;
   final double size;
 
+  const CircularGPAIndicator({
+    super.key,
+    required this.gpa,
+    required this.title,
+    this.subtitle,
+    this.size = 130,
+  });
+
   @override
   Widget build(BuildContext context) {
     final progress = (gpa / 4.0).clamp(0.0, 1.0);
-    final isFullCircle = gpa >= 4.0;
-
     return SizedBox(
       width: size,
       height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Background circle
           SizedBox(
             width: size,
             height: size,
             child: CustomPaint(
-              painter: CirclePainter(
-                progress: 0.0,
-                backgroundColor: Colors.white.withOpacity(0.3),
-              ),
+              painter: _CirclePainter(progress: 0.0),
             ),
           ),
-          // Progress circle
           SizedBox(
             width: size,
             height: size,
             child: CustomPaint(
-              painter: CirclePainter(
-                progress: progress,
-                backgroundColor: Colors.transparent,
-              ),
+              painter: _CirclePainter(progress: progress, isProgress: true),
             ),
           ),
-          // Center text
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isFullCircle ? 'Full Circle' : gpa.toStringAsFixed(2),
+                gpa.toStringAsFixed(2),
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: isFullCircle ? 18 : 32,
+                  fontSize: size * 0.24,
                   fontWeight: FontWeight.bold,
                 ),
-                textAlign: TextAlign.center,
               ),
-              if (!isFullCircle) ...[
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              if (subtitle != null && subtitle!.isNotEmpty)
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              if (subtitle != null)
                 Text(
                   subtitle!,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white60, fontSize: 10),
                 ),
             ],
           ),
@@ -86,64 +70,47 @@ class CircularGPAIndicator extends StatelessWidget {
   }
 }
 
-class CirclePainter extends CustomPainter {
-  CirclePainter({
-    required this.progress,
-    this.backgroundColor = Colors.transparent,
-  });
-
+class _CirclePainter extends CustomPainter {
   final double progress;
-  final Color backgroundColor;
+  final bool isProgress;
+
+  _CirclePainter({required this.progress, this.isProgress = false});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
-    final strokeWidth = 12.0;
+    const strokeWidth = 10.0;
 
-    // Draw background circle
-    if (backgroundColor != Colors.transparent) {
-      final backgroundPaint = Paint()
-        ..color = backgroundColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
 
-      canvas.drawCircle(center, radius, backgroundPaint);
-    }
-
-    // Draw progress arc
-    if (progress > 0) {
-      final progressPaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-
-      final startAngle = -90 * (3.14159 / 180); // Start from top
+    if (isProgress && progress > 0) {
+      paint.color = Colors.white;
+      paint.shader = null;
+      final startAngle = -90 * (3.14159 / 180);
       final sweepAngle = 360 * progress * (3.14159 / 180);
-
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
         sweepAngle,
         false,
-        progressPaint,
+        paint,
       );
+    } else if (!isProgress) {
+      paint.color = Colors.white.withValues(alpha: 0.2);
+      canvas.drawCircle(center, radius, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class GPAScreen extends StatefulWidget {
-  const GPAScreen({super.key, this.scaffoldKey, this.onNavigate});
-
-  final GlobalKey<ScaffoldState>? scaffoldKey;
-  final Function(int)? onNavigate;
+  const GPAScreen({super.key});
 
   @override
   State<GPAScreen> createState() => _GPAScreenState();
@@ -152,61 +119,11 @@ class GPAScreen extends StatefulWidget {
 class _GPAScreenState extends State<GPAScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedSemester = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-  }
-
-  // Helper method to group semesters by academic year
-  Map<String, List<String>> _groupSemestersByYear(List<String> semesters) {
-    final Map<String, List<String>> yearMap = {};
-
-    for (final semester in semesters) {
-      final parts = semester.split(' ');
-      if (parts.length >= 2) {
-        final season = parts[0];
-        final year = parts[1];
-
-        // Academic year spans from Fall to Spring
-        String academicYear;
-        if (season == 'Fall') {
-          academicYear = '$year-${(int.parse(year) + 1).toString()}';
-        } else if (season == 'Spring') {
-          academicYear = '${(int.parse(year) - 1).toString()}-$year';
-        } else {
-          academicYear = year;
-        }
-
-        if (!yearMap.containsKey(academicYear)) {
-          yearMap[academicYear] = [];
-        }
-        yearMap[academicYear]!.add(semester);
-      }
-    }
-
-    // Sort semesters within each year (Fall first, then Spring)
-    for (final year in yearMap.keys) {
-      yearMap[year]!.sort((a, b) {
-        final aSeason = a.split(' ')[0];
-        final bSeason = b.split(' ')[0];
-        if (aSeason == 'Fall' && bSeason == 'Spring') return -1;
-        if (aSeason == 'Spring' && bSeason == 'Fall') return 1;
-        return a.compareTo(b);
-      });
-    }
-
-    return yearMap;
-  }
-
-  // Get current academic year
-  String _getCurrentAcademicYear(List<String> semesters) {
-    if (semesters.isEmpty) return '';
-    final yearMap = _groupSemestersByYear(semesters);
-    final years = yearMap.keys.toList()..sort();
-    return years.isNotEmpty ? years.last : '';
   }
 
   @override
@@ -219,348 +136,213 @@ class _GPAScreenState extends State<GPAScreen>
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        if (_selectedSemester.isEmpty && provider.semesters.isNotEmpty) {
-          _selectedSemester = provider.semesters.last;
-        }
-
-        final currentGPA = _calculateCurrentSemesterGPA(provider);
-
-        return Container(
-          decoration: const BoxDecoration(color: Color(0xFFF5F5F5)),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.only(
-                  top: 40,
-                  left: 16,
-                  right: 16,
-                  bottom: 8,
-                ),
-                color: const Color(0xFF3949AB),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'GPA / CGPA',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              color: AppColors.primary,
+              child: const Row(
+                children: [
+                  Icon(Icons.calculate_rounded,
+                      color: Colors.white, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'GPA / CGPA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Container(
-                color: const Color(0xFF3949AB),
-                child: TabBar(
-                  controller: _tabController,
-                  indicatorColor: Colors.white,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white70,
-                  tabs: const [
-                    Tab(text: 'GPA Calculator'),
-                    Tab(text: 'CGPA Calculator'),
-                  ],
-                ),
+            ),
+            Container(
+              color: AppColors.primary,
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14),
+                tabs: const [
+                  Tab(text: 'GPA'),
+                  Tab(text: 'CGPA'),
+                ],
               ),
-              Expanded(
+            ),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildGPACalculatorTab(currentGPA, provider),
-                    _buildCGPACalculatorTab(provider),
+                    _buildGPATab(provider),
+                    _buildCGPATab(provider),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildGPACalculatorTab(double currentGPA, AppProvider provider) {
-    final yearMap = _groupSemestersByYear(provider.semesters);
-    final currentAcademicYear = _getCurrentAcademicYear(provider.semesters);
+  double _calcGPA(List<Grade> grades, AppProvider provider) {
+    if (grades.isEmpty) return 0;
+    double pts = 0;
+    int cr = 0;
+    for (final g in grades) {
+      final c = provider.getCourseInfo(g.courseCode);
+      if (c != null) {
+        pts += Grade.gradePoint(g.letterGrade) * c.creditHours;
+        cr += c.creditHours;
+      }
+    }
+    return cr > 0 ? pts / cr : 0;
+  }
 
+  Widget _buildGPATab(AppProvider provider) {
+    final currentGPA = _calcGPA(
+      provider.getGradesForSemester(provider.selectedSemester),
+      provider,
+    );
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 2,
-                  blurRadius: 4,
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Color(0xFF3949AB)),
-                    SizedBox(width: 12),
-                    Text(
-                      'Academic Year',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF3949AB),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (yearMap.isNotEmpty) ...[
-                  Text(
-                    currentAcademicYear,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF3949AB),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3949AB),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButton<String>(
-                            value: provider.semesters.isNotEmpty
-                                ? provider.selectedSemester
-                                : null,
-                            underline: const SizedBox(),
-                            dropdownColor: const Color(0xFF3949AB),
-                            style: const TextStyle(color: Colors.white),
-                            icon: const Icon(
-                              Icons.arrow_drop_down,
-                              color: Colors.white,
-                            ),
-                            isExpanded: true,
-                            items:
-                                yearMap[currentAcademicYear]?.map((semester) {
-                                  return DropdownMenuItem(
-                                    value: semester,
-                                    child: Text(
-                                      semester,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  );
-                                }).toList() ??
-                                [],
-                            onChanged: (value) {
-                              if (value != null) provider.selectSemester(value);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  const Text(
-                    'No semesters available',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3949AB), Color(0xFF2196F3)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                CircularGPAIndicator(
-                  gpa: currentGPA,
-                  title: 'Current GPA',
-                  subtitle: provider.selectedSemester.isNotEmpty
-                      ? provider.selectedSemester
-                      : null,
-                  size: 120.0,
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            decoration: AppTheme.gradientCard,
+            child: CircularGPAIndicator(
+              gpa: currentGPA,
+              title: 'Current GPA',
+              subtitle: provider.selectedSemester.isNotEmpty
+                  ? provider.selectedSemester
+                  : null,
+              size: 130,
             ),
           ),
-          const SizedBox(height: 24),
-          // Summary Section
+          const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 2,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.all(16),
+            decoration: AppTheme.outlinedCard,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Summary',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3949AB),
+                const Text('Select Semester',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryItem(
-                        'Total Credit Hours',
-                        _calculateTotalCredits(provider),
-                        Icons.school,
-                        Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryItem(
-                        'Total Grade Points',
-                        _calculateTotalGradePoints(provider),
-                        Icons.grade,
-                        Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryItem(
-                        'GPA',
-                        currentGPA,
-                        Icons.calculate,
-                        Colors.orange,
-                      ),
-                    ),
-                  ],
+                  child: DropdownButton<String>(
+                    value: provider.semesters.isNotEmpty
+                        ? provider.selectedSemester
+                        : null,
+                    underline: const SizedBox(),
+                    isExpanded: true,
+                    dropdownColor: AppColors.primary,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    icon: const Icon(Icons.arrow_drop_down,
+                        color: Colors.white),
+                    items: provider.semesters.map((s) {
+                      return DropdownMenuItem(value: s, child: Text(s));
+                    }).toList(),
+                    onChanged: (v) {
+                      if (v != null) provider.selectSemester(v);
+                    },
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Course List',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3949AB),
-              ),
-            ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _statCard('Credits',
+                  '${provider.getGradesForSemester(provider.selectedSemester).fold(0, (sum, g) {
+                    final c = provider.getCourseInfo(g.courseCode);
+                    return sum + (c?.creditHours ?? 0);
+                  })}',
+                  Icons.school_rounded, AppColors.info),
+              const SizedBox(width: 10),
+              _statCard('GPA', currentGPA.toStringAsFixed(2),
+                  Icons.grade_rounded, AppColors.success),
+              const SizedBox(width: 10),
+              _statCard('Courses',
+                  '${provider.getGradesForSemester(provider.selectedSemester).length}',
+                  Icons.book_rounded, AppColors.warning),
+            ],
           ),
-          const SizedBox(height: 12),
-          ...provider.getGradesForSemester(provider.selectedSemester).map((
-            grade,
-          ) {
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Course List', style: AppTextStyles.h3),
+              Text(
+                '${provider.getGradesForSemester(provider.selectedSemester).length} courses',
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...provider
+              .getGradesForSemester(provider.selectedSemester)
+              .map((grade) {
             final course = provider.getCourseInfo(grade.courseCode);
             return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GradeBreakdownScreen(
-                      grade: grade,
-                      course: course,
-                    ),
-                  ),
-                );
-              },
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GradeBreakdownScreen(
+                      grade: grade, course: course),
+                ),
+              ),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.all(14),
+                decoration: AppTheme.whiteCard,
                 child: Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            grade.courseCode,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            course?.courseTitle ?? 'Course Title',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            '${course?.creditHours ?? 0} Credits',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                            ),
-                          ),
+                          Text(grade.courseCode,
+                              style: AppTextStyles.body),
+                          Text(course?.courseTitle ?? '',
+                              style: AppTextStyles.caption),
+                          Text('${course?.creditHours ?? 0} Credits',
+                              style: AppTextStyles.caption),
                         ],
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: _getGradeColor(grade.letterGrade),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         grade.letterGrade,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.gradeColor(grade.letterGrade),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.grey,
-                      size: 16,
-                    ),
+                    const Icon(Icons.chevron_right,
+                        color: AppColors.textLight, size: 20),
                   ],
                 ),
               ),
@@ -571,206 +353,128 @@ class _GPAScreenState extends State<GPAScreen>
     );
   }
 
-  Widget _buildCGPACalculatorTab(AppProvider provider) {
-    final yearMap = _groupSemestersByYear(provider.semesters);
-    final sortedYears = yearMap.keys.toList()..sort((a, b) => a.compareTo(b));
+  Widget _statCard(
+      String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: AppTheme.outlinedCard,
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
+            Text(title,
+                style: TextStyle(fontSize: 10, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
 
+  Widget _buildCGPATab(AppProvider provider) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3949AB), Color(0xFF2196F3)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                CircularGPAIndicator(
-                  gpa: provider.cgpa,
-                  title: 'Cumulative GPA',
-                  size: 120.0,
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            decoration: AppTheme.gradientCard,
+            child: CircularGPAIndicator(
+              gpa: provider.cgpa,
+              title: 'Cumulative GPA',
+              size: 130,
             ),
           ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _statCard(
+                  'Total Credits', '${provider.grades.length * 3}',
+                  Icons.school_rounded, AppColors.info),
+              const SizedBox(width: 10),
+              _statCard('CGPA', provider.cgpa.toStringAsFixed(2),
+                  Icons.grade_rounded, AppColors.success),
+              const SizedBox(width: 10),
+              _statCard('Courses', '${provider.grades.length}',
+                  Icons.book_rounded, AppColors.warning),
+            ],
+          ),
           const SizedBox(height: 24),
-          // CGPA Summary Section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 2,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Cumulative Summary',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3949AB),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+          Text('Semester History', style: AppTextStyles.h3),
+          const SizedBox(height: 14),
+          ...provider.semesters.map((semester) {
+            final grades = provider.getGradesForSemester(semester);
+            final gpa = _calcGPA(grades, provider);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: AppTheme.whiteCard,
+              child: ExpansionTile(
+                tilePadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                title: Row(
                   children: [
                     Expanded(
-                      child: _buildSummaryItem(
-                        'Total Credit Hours',
-                        _calculateCumulativeCredits(provider),
-                        Icons.school,
-                        Colors.blue,
-                      ),
+                      child: Text(semester,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 15)),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryItem(
-                        'Total Grade Points',
-                        _calculateCumulativeGradePoints(provider),
-                        Icons.grade,
-                        Colors.green,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _gpaColor(gpa),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryItem(
-                        'CGPA',
-                        provider.cgpa,
-                        Icons.calculate,
-                        Colors.orange,
+                      child: Text(
+                        gpa.toStringAsFixed(2),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          ...sortedYears.map((academicYear) {
-            final semesters = yearMap[academicYear]!;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 3,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3949AB).withOpacity(0.1),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.school, color: Color(0xFF3949AB)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Academic Year $academicYear',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF3949AB),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${semesters.length} Semesters',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ...semesters.map((semester) {
-                    final grades = provider.getGradesForSemester(semester);
-                    final gpa = _calculateGPA(grades, provider);
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                subtitle: Text('${grades.length} courses',
+                    style: AppTextStyles.caption),
+                children: grades.map((grade) {
+                  final course = provider.getCourseInfo(grade.courseCode);
+                  return ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Colors.grey.withOpacity(0.2),
-                            width: 0.5,
-                          ),
-                        ),
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  semester,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '${grades.length} Courses',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getGradeColor(_getLetterGrade(gpa)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              gpa.toStringAsFixed(2),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: Text(grade.courseCode,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                              fontSize: 10)),
+                    ),
+                    title: Text(course?.courseTitle ?? '',
+                        style: const TextStyle(fontSize: 13)),
+                    subtitle: Text('${course?.creditHours ?? 0} credits',
+                        style: AppTextStyles.caption),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTextStyles.gradeBgColor(grade.letterGrade)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    );
-                  }),
-                ],
+                      child: Text(grade.letterGrade,
+                          style: AppTextStyles.gradeColor(grade.letterGrade)),
+                    ),
+                  );
+                }).toList(),
               ),
             );
           }),
@@ -779,129 +483,10 @@ class _GPAScreenState extends State<GPAScreen>
     );
   }
 
-  double _calculateCurrentSemesterGPA(AppProvider provider) {
-    final grades = provider.getGradesForSemester(provider.selectedSemester);
-    return _calculateGPA(grades, provider);
-  }
-
-  double _calculateGPA(List<Grade> grades, AppProvider provider) {
-    if (grades.isEmpty) return 0.0;
-    double totalPoints = 0;
-    int totalCredits = 0;
-    for (final grade in grades) {
-      final course = provider.getCourseInfo(grade.courseCode);
-      if (course != null) {
-        totalPoints += Grade.gradePoint(grade.letterGrade) * course.creditHours;
-        totalCredits += course.creditHours;
-      }
-    }
-    return totalCredits > 0 ? totalPoints / totalCredits : 0.0;
-  }
-
-  Color _getGradeColor(String letterGrade) {
-    switch (letterGrade) {
-      case 'A+':
-      case 'A':
-        return Colors.green;
-      case 'A-':
-        return Colors.teal;
-      case 'B+':
-      case 'B':
-        return Colors.blue;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  String _getLetterGrade(double gpa) {
-    if (gpa >= 3.7) return 'A';
-    if (gpa >= 3.3) return 'A-';
-    if (gpa >= 3.0) return 'B+';
-    if (gpa >= 2.7) return 'B';
-    if (gpa >= 2.3) return 'B-';
-    return 'C';
-  }
-  
-  // Helper methods for summary section
-  Widget _buildSummaryItem(String title, dynamic value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value is double ? value.toStringAsFixed(2) : value.toString(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  int _calculateTotalCredits(AppProvider provider) {
-    final grades = provider.getGradesForSemester(provider.selectedSemester);
-    int totalCredits = 0;
-    for (final grade in grades) {
-      final course = provider.getCourseInfo(grade.courseCode);
-      if (course != null) {
-        totalCredits += course.creditHours;
-      }
-    }
-    return totalCredits;
-  }
-  
-  double _calculateTotalGradePoints(AppProvider provider) {
-    final grades = provider.getGradesForSemester(provider.selectedSemester);
-    double totalPoints = 0;
-    for (final grade in grades) {
-      final course = provider.getCourseInfo(grade.courseCode);
-      if (course != null) {
-        totalPoints += Grade.gradePoint(grade.letterGrade) * course.creditHours;
-      }
-    }
-    return totalPoints;
-  }
-  
-  // Cumulative calculation methods
-  int _calculateCumulativeCredits(AppProvider provider) {
-    int totalCredits = 0;
-    for (final grade in provider.grades) {
-      final course = provider.getCourseInfo(grade.courseCode);
-      if (course != null) {
-        totalCredits += course.creditHours;
-      }
-    }
-    return totalCredits;
-  }
-  
-  double _calculateCumulativeGradePoints(AppProvider provider) {
-    double totalPoints = 0;
-    for (final grade in provider.grades) {
-      final course = provider.getCourseInfo(grade.courseCode);
-      if (course != null) {
-        totalPoints += Grade.gradePoint(grade.letterGrade) * course.creditHours;
-      }
-    }
-    return totalPoints;
+  Color _gpaColor(double gpa) {
+    if (gpa >= 3.7) return AppColors.gradeA;
+    if (gpa >= 3.0) return AppColors.gradeB;
+    if (gpa >= 2.0) return AppColors.gradeC;
+    return AppColors.gradeD;
   }
 }

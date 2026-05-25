@@ -42,21 +42,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDKjkEoh-RdeybNQ-dJdbor3tN3XIz82xE',
-    appId: '1:777822275786:web:1234567890abcdef',
+    appId: '1:777822275786:web:34f4062ee76caaf49e0c33',
     messagingSenderId: '777822275786',
     projectId: 'grade-2f7fc',
     authDomain: 'grade-2f7fc.firebaseapp.com',
-    storageBucket: 'grade-2f7fc.appspot.com',
-    databaseURL: 'https://grade-2f7fc-default-rtdb.europe-west3.firebasedatabase.app',
+    storageBucket: 'grade-2f7fc.firebasestorage.app',
+    measurementId: 'G-75S48VKE7L',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDKjkEoh-RdeybNQ-dJdbor3tN3XIz82xE',
-    appId: '1:777822275786:android:1234567890abcdef',
+    apiKey: 'AIzaSyCjMbcwEhKgONuv6hvLCgRmqOtSTWLEfV8',
+    appId: '1:777822275786:android:4d2c68475710e5759e0c33',
     messagingSenderId: '777822275786',
     projectId: 'grade-2f7fc',
-    storageBucket: 'grade-2f7fc.appspot.com',
-    databaseURL: 'https://grade-2f7fc-default-rtdb.europe-west3.firebasedatabase.app',
+    storageBucket: 'grade-2f7fc.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

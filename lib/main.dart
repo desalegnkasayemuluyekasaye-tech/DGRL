@@ -12,13 +12,14 @@ import 'services/local_data_setup.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    print('Firebase initialization failed: $e');
+  }
 
-  // Only connect to emulators in development mode with explicit flag
-  // Remove this block when deploying to production
   if (const bool.fromEnvironment('USE_FIREBASE_EMULATOR') == true) {
     try {
       // Connect to Firestore emulator

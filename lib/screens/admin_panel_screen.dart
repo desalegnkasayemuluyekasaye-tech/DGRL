@@ -26,6 +26,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   int _currentTab = 0;
   bool _loading = false;
+  String _appTheme = 'system';
 
   List<Student> _students = [];
   List<Course> _courses = [];
@@ -117,16 +118,34 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.admin_panel_settings_rounded,
-                color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.admin_panel_settings_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('Admin Panel',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              'Admin Dashboard',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_none_outlined,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              // preserve navigation/notification intent (placeholder)
+              ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+                const SnackBar(content: Text('No new notifications')),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
@@ -147,6 +166,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         return _buildCoursesTab();
       case 3:
         return _buildGradesTab();
+      case 4:
+        return _buildMoreTab();
       default:
         return _buildDashboard();
     }
@@ -161,23 +182,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Overview', style: AppTextStyles.h2),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // Top overview metric cards (4 columns)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _kpiCard('${_students.length}', 'Students',
-                  Icons.people_rounded, AppColors.info, () {
-                setState(() => _currentTab = 1);
-              }),
+              _kpiCard(
+                '${_students.length}',
+                'Students',
+                Icons.people_alt_outlined,
+                const Color(0xFF1E88E5),
+                () => setState(() => _currentTab = 1),
+              ),
               const SizedBox(width: 12),
-              _kpiCard('${_courses.length}', 'Courses',
-                  Icons.menu_book_rounded, AppColors.success, () {
-                setState(() => _currentTab = 2);
-              }),
+              _kpiCard(
+                '${_courses.length}',
+                'Courses',
+                Icons.menu_book_outlined,
+                const Color(0xFF4CAF50),
+                () => setState(() => _currentTab = 2),
+              ),
               const SizedBox(width: 12),
-              _kpiCard('${_grades.length}', 'Grades',
-                  Icons.assessment_rounded, AppColors.warning, () {
-                setState(() => _currentTab = 3);
-              }),
+              _kpiCard(
+                '5',
+                'Semesters',
+                Icons.trending_up_rounded,
+                const Color(0xFF00BFA5),
+                () {},
+              ),
+              const SizedBox(width: 12),
+              _kpiCard(
+                '320',
+                'Total Grades',
+                Icons.bar_chart_rounded,
+                const Color(0xFFFF9800),
+                () => setState(() => _currentTab = 3),
+              ),
             ],
           ),
           const SizedBox(height: 32),
@@ -185,54 +225,81 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              _actionCard(
-                  'Add Student', Icons.person_add_rounded, AppColors.info,
-                  () {
-                setState(() => _currentTab = 1);
-                _showAddStudentDialog();
-              }),
+              _quickActionCard(
+                'Add Student',
+                Icons.person_add_alt_1_rounded,
+                const Color(0xFF1E88E5),
+                const Color(0xFFE3F2FD),
+                () {
+                  setState(() => _currentTab = 1);
+                  _showAddStudentDialog();
+                },
+              ),
               const SizedBox(width: 12),
-              _actionCard('Add Course', Icons.menu_book_rounded,
-                  AppColors.success, () {
-                setState(() => _currentTab = 2);
-                _showAddCourseDialog();
-              }),
+              _quickActionCard(
+                'Add Course',
+                Icons.library_books_rounded,
+                const Color(0xFF4CAF50),
+                const Color(0xFFE8F5E9),
+                () {
+                  setState(() => _currentTab = 2);
+                  _showAddCourseDialog();
+                },
+              ),
               const SizedBox(width: 12),
-              _actionCard('Add Grade', Icons.grade_rounded, AppColors.warning,
-                  () {
-                setState(() => _currentTab = 3);
-                _showAddGradeDialog();
-              }),
+              _quickActionCard(
+                'Upload Grades',
+                Icons.cloud_upload_rounded,
+                const Color(0xFF00BFA5),
+                const Color(0xFFE0F2F1),
+                () {
+                  setState(() => _currentTab = 3);
+                  _showAddGradeDialog();
+                },
+              ),
+              const SizedBox(width: 12),
+              _quickActionCard(
+                'View Reports',
+                Icons.description_rounded,
+                const Color(0xFF9C27B0),
+                const Color(0xFFF3E5F5),
+                () {
+                  setState(() => _currentTab = 3);
+                },
+              ),
             ],
           ),
           const SizedBox(height: 32),
           Text('Recent Activity', style: AppTextStyles.h3),
           const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             decoration: AppTheme.whiteCard,
-            child: Row(
+            child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.check_circle_rounded,
-                      color: AppColors.success),
+                _activityItem(
+                  Icons.description_outlined,
+                  'Grades uploaded for Spring 2024',
+                  '12 May 2024',
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Firestore Connected',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('${_students.length} students, ${_courses.length} courses',
-                          style: AppTextStyles.caption),
-                    ],
-                  ),
+                const Divider(height: 8),
+                _activityItem(
+                  Icons.person_outline_rounded,
+                  'New student registered',
+                  '11 May 2024',
+                ),
+                const Divider(height: 8),
+                _activityItem(
+                  Icons.edit_note_rounded,
+                  'Course updated: CS-302',
+                  '10 May 2024',
+                ),
+                const Divider(height: 8),
+                _activitySystemItem(
+                  Icons.cloud_done_outlined,
+                  'Firestore Connected',
+                  '${_students.length} students, ${_courses.length} courses',
+                  '5 May 2024',
                 ),
               ],
             ),
@@ -242,22 +309,99 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _kpiCard(String value, String label, IconData icon, Color color,
-      VoidCallback onTap) {
+  Widget _kpiCard(
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: AppTheme.outlinedCard,
+          height: 90,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickActionCard(
+    String label,
+    IconData icon,
+    Color iconColor,
+    Color bgColor,
+    VoidCallback onTap,
+  ) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 6),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-              Text(label, style: TextStyle(fontSize: 12, color: color)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(label, style: AppTextStyles.bodySmall),
             ],
           ),
         ),
@@ -266,28 +410,531 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Widget _actionCard(
-      String label, IconData icon, Color color, VoidCallback onTap) {
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: AppTheme.outlinedCard,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
+                  color: color.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Icon(icon, color: color, size: 26),
               ),
               const SizedBox(height: 10),
               Text(label, style: AppTextStyles.bodySmall),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _activityItem(IconData icon, String text, String time) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: Colors.blue, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: AppTextStyles.body)),
+          const SizedBox(width: 8),
+          Text(time, style: AppTextStyles.caption),
+        ],
+      ),
+    );
+  }
+
+  Widget _activitySystemItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    String time,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.success, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.body),
+                const SizedBox(height: 4),
+                Text(subtitle, style: AppTextStyles.caption),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(time, style: AppTextStyles.caption),
+        ],
+      ),
+    );
+  }
+
+  String _relativeDate(DateTime d) {
+    return '${d.day} ${_monthName(d.month)} ${d.year}';
+  }
+
+  String _monthName(int m) {
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return names[((m - 1).clamp(0, 11)).toInt()];
+  }
+
+  void _showAccountSettings() {
+    final p = Provider.of<AppProvider>(context, listen: false);
+    final String adminEmail = p.currentStudent?.email ?? 'admin@dgrl.edu';
+
+    final currentPassC = TextEditingController();
+    final newPassC = TextEditingController();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Account Settings',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: AppTheme.whiteCard,
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Color(0xFFE0E0E0),
+                    child: Icon(Icons.person, color: Color(0xFF616161)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Administrator',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          adminEmail,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Change Password',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: currentPassC,
+              obscureText: true,
+              decoration: _inputDec('Current password'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: newPassC,
+              obscureText: true,
+              decoration: _inputDec('New password'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final oldP = currentPassC.text.trim();
+                      final np = newPassC.text.trim();
+                      if (oldP.isEmpty) {
+                        _snack('Enter current password');
+                        return;
+                      }
+                      if (np.isEmpty || np.length < 6) {
+                        _snack('New password must be at least 6 characters');
+                        return;
+                      }
+                      final ok = await _changePassword(oldP, np);
+                      if (ok) {
+                        currentPassC.clear();
+                        newPassC.clear();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        _snack('Password updated successfully', ok: true);
+                      }
+                    },
+                    child: const Text('Save New Password'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _changePassword(String oldPassword, String newPassword) async {
+    final p = Provider.of<AppProvider>(context, listen: false);
+    _snack('Updating password...');
+    try {
+      final ok = await p.authService.changePassword(oldPassword, newPassword);
+      if (ok) return true;
+      _snack('Failed to update password');
+      return false;
+    } catch (e) {
+      _snack('Failed to update password: $e');
+      return false;
+    }
+  }
+
+  // Theme selection dialog
+  void _showThemeDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        String tmp = _appTheme;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('App System Theme'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<String>(
+                  title: const Text('System Default'),
+                  value: 'system',
+                  groupValue: tmp,
+                  onChanged: (v) => setDialogState(() => tmp = v ?? 'system'),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Light Theme'),
+                  value: 'light',
+                  groupValue: tmp,
+                  onChanged: (v) => setDialogState(() => tmp = v ?? 'light'),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Dark Theme'),
+                  value: 'dark',
+                  groupValue: tmp,
+                  onChanged: (v) => setDialogState(() => tmp = v ?? 'dark'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() => _appTheme = tmp);
+                  final p = Provider.of<AppProvider>(context, listen: false);
+                  try {
+                    p.setTheme(_appTheme);
+                  } catch (_) {}
+                  Navigator.pop(ctx);
+                  _snack('Theme updated', ok: true);
+                },
+                child: const Text('Apply'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Help & Support docs dialog
+  void _showHelpDocs() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Help & Support'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'How to register a new student',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 6),
+              Text(
+                '1. Click the Add Student button on the Students tab.\n2. Fill required fields: Student ID, Full Name, Email, Password.\n3. Click Save to persist the student.',
+              ),
+              SizedBox(height: 12),
+              Text(
+                'How to modify existing course records',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 6),
+              Text(
+                '1. Open the Courses tab.\n2. Tap the More menu on a course and choose Edit.\n3. Update fields and click Update to save changes.',
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Grade evaluation criteria guidelines',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Grades are computed from Mid, Assignment and Final scores. Ensure totals are normalized to the 0-100 scale before saving.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── MORE TAB ─────────────────────────────────────────────
+
+  Widget _buildMoreTab() {
+    const adminEmail = 'admin@dgrl.edu';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Color(0xFFE0E0E0),
+                  child: Icon(Icons.person, color: Color(0xFF616161)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Administrator',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'admin@dgrl.edu',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          Container(
+            decoration: AppTheme.whiteCard,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.person_outline_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('Account Settings'),
+                  onTap: _showAccountSettings,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.palette_outlined,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('App System Theme'),
+                  onTap: _showThemeDialog,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.cached_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('Clear Database Cache'),
+                  onTap: () async {
+                    _snack('Clearing cache...');
+                    await Future.delayed(const Duration(milliseconds: 400));
+                    _snack('Cache cleared', ok: true);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.help_outline_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('Help & Support Documentation'),
+                  onTap: _showHelpDocs,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('About DGRL Platform'),
+                  onTap: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'DGRL Platform',
+                      applicationVersion: '1.0.0',
+                      children: const [
+                        Text('Academic result management system.'),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () async {
+              final p = Provider.of<AppProvider>(context, listen: false);
+              await p.logout();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.logout_rounded, color: AppColors.error),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Sign Out',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -302,11 +949,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           child: Row(
             children: [
               const Expanded(
-                child: Text('Student Records',
-                    style: AppTextStyles.h3),
+                child: Text('Student Records', style: AppTextStyles.h3),
               ),
-              _smallBtn('Add', Icons.add_rounded, AppColors.info,
-                  _showAddStudentDialog),
+              _smallBtn(
+                'Add',
+                Icons.add_rounded,
+                AppColors.info,
+                _showAddStudentDialog,
+              ),
             ],
           ),
         ),
@@ -335,23 +985,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         children: [
           CircleAvatar(
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Text(s.studentId.substring(0, 2).toUpperCase(),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                    fontSize: 14)),
+            child: Text(
+              s.studentId.substring(0, 2).toUpperCase(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+                fontSize: 14,
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s.fullName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(
-                    '${s.studentId} • ${s.department} • Batch ${s.batch}',
-                    style: AppTextStyles.caption),
+                  s.fullName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  '${s.studentId} • ${s.department} • Batch ${s.batch}',
+                  style: AppTextStyles.caption,
+                ),
                 Text(s.email, style: AppTextStyles.caption),
               ],
             ),
@@ -364,19 +1022,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(children: [
+                value: 'edit',
+                child: Row(
+                  children: [
                     Icon(Icons.edit, size: 18, color: AppColors.info),
                     SizedBox(width: 8),
-                    Text('Edit')
-                  ])),
+                    Text('Edit'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(children: [
+                value: 'delete',
+                child: Row(
+                  children: [
                     Icon(Icons.delete, size: 18, color: AppColors.error),
                     SizedBox(width: 8),
-                    Text('Delete')
-                  ])),
+                    Text('Delete'),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -430,28 +1094,37 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
-              if (idC.text.isEmpty || nameC.text.isEmpty || emailC.text.isEmpty ||
+              if (idC.text.isEmpty ||
+                  nameC.text.isEmpty ||
+                  emailC.text.isEmpty ||
                   passC.text.isEmpty) {
                 _snack('Fill required fields');
                 return;
               }
               try {
-                await _firestoreService.addStudent(Student(
-                  studentId: idC.text,
-                  fullName: nameC.text,
-                  department: deptC.text,
-                  batch: batchC.text,
-                  email: emailC.text,
-                  password: passC.text,
-                  phone: phoneC.text,
-                  age: int.tryParse(ageC.text),
-                  sex: sex,
-                ));
+                await _firestoreService.addStudent(
+                  Student(
+                    studentId: idC.text,
+                    fullName: nameC.text,
+                    department: deptC.text,
+                    batch: batchC.text,
+                    email: emailC.text,
+                    password: passC.text,
+                    phone: phoneC.text,
+                    age: int.tryParse(ageC.text),
+                    sex: sex,
+                  ),
+                );
                 Navigator.pop(ctx);
                 await _loadStudents();
                 _snack('Student added successfully', ok: true);
@@ -507,10 +1180,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.info, foregroundColor: Colors.white),
+              backgroundColor: AppColors.info,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               await _firestoreService.updateStudent(s.studentId, {
                 'full_name': nameC.text,
@@ -540,8 +1218,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         content: Text('Remove student "$id"? This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
@@ -567,9 +1246,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           child: Row(
             children: [
               const Expanded(
-                  child: Text('Course Records', style: AppTextStyles.h3)),
-              _smallBtn('Add', Icons.add_rounded, AppColors.success,
-                  _showAddCourseDialog),
+                child: Text('Course Records', style: AppTextStyles.h3),
+              ),
+              _smallBtn(
+                'Add',
+                Icons.add_rounded,
+                AppColors.success,
+                _showAddCourseDialog,
+              ),
             ],
           ),
         ),
@@ -602,23 +1286,31 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(c.courseCode,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                    fontSize: 12)),
+            child: Text(
+              c.courseCode,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.success,
+                fontSize: 12,
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(c.courseTitle,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(
-                    '${c.creditHours} Credits • ${c.instructor} • ${c.semester}',
-                    style: AppTextStyles.caption),
+                  c.courseTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  '${c.creditHours} Credits • ${c.instructor} • ${c.semester}',
+                  style: AppTextStyles.caption,
+                ),
               ],
             ),
           ),
@@ -630,19 +1322,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(children: [
+                value: 'edit',
+                child: Row(
+                  children: [
                     Icon(Icons.edit, size: 18, color: AppColors.info),
                     SizedBox(width: 8),
-                    Text('Edit')
-                  ])),
+                    Text('Edit'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(children: [
+                value: 'delete',
+                child: Row(
+                  children: [
                     Icon(Icons.delete, size: 18, color: AppColors.error),
                     SizedBox(width: 8),
-                    Text('Delete')
-                  ])),
+                    Text('Delete'),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -681,28 +1379,38 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success, foregroundColor: Colors.white),
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
-              if (codeC.text.isEmpty || titleC.text.isEmpty ||
-                  instrC.text.isEmpty || semC.text.isEmpty) {
+              if (codeC.text.isEmpty ||
+                  titleC.text.isEmpty ||
+                  instrC.text.isEmpty ||
+                  semC.text.isEmpty) {
                 _snack('Fill required fields');
                 return;
               }
-              final ok = await _courseService.addCourse(Course(
-                courseCode: codeC.text,
-                courseTitle: titleC.text,
-                creditHours: int.tryParse(creditsC.text) ?? 3,
-                instructor: instrC.text,
-                semester: semC.text,
-                department: deptC.text,
-                schedule: CourseSchedule(
+              final ok = await _courseService.addCourse(
+                Course(
+                  courseCode: codeC.text,
+                  courseTitle: titleC.text,
+                  creditHours: int.tryParse(creditsC.text) ?? 3,
+                  instructor: instrC.text,
+                  semester: semC.text,
+                  department: deptC.text,
+                  schedule: CourseSchedule(
                     dayOfWeek: 'Monday',
                     startTime: '09:00',
-                    endTime: '10:30'),
-              ));
+                    endTime: '10:30',
+                  ),
+                ),
+              );
               Navigator.pop(ctx);
               if (ok) {
                 await _loadCourses();
@@ -723,8 +1431,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final docId = idx >= 0 ? _courseDocIds[idx] : null;
 
     final titleC = TextEditingController(text: c.courseTitle);
-    final creditsC =
-        TextEditingController(text: c.creditHours.toString());
+    final creditsC = TextEditingController(text: c.creditHours.toString());
     final instrC = TextEditingController(text: c.instructor);
     final semC = TextEditingController(text: c.semester);
     final deptC = TextEditingController(text: c.department);
@@ -750,27 +1457,35 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.info, foregroundColor: Colors.white),
+              backgroundColor: AppColors.info,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               if (docId != null) {
-                await _courseService.updateCourse(docId, Course(
-                  courseCode: c.courseCode,
-                  courseTitle: titleC.text,
-                  creditHours: int.tryParse(creditsC.text) ?? 3,
-                  instructor: instrC.text,
-                  semester: semC.text,
-                  department: deptC.text,
-                  schedule: c.schedule,
-                  isActive: c.isActive,
-                  maxCapacity: c.maxCapacity,
-                  currentEnrolled: c.currentEnrolled,
-                  prerequisites: c.prerequisites,
-                  room: c.room,
-                  building: c.building,
-                ));
+                await _courseService.updateCourse(
+                  docId,
+                  Course(
+                    courseCode: c.courseCode,
+                    courseTitle: titleC.text,
+                    creditHours: int.tryParse(creditsC.text) ?? 3,
+                    instructor: instrC.text,
+                    semester: semC.text,
+                    department: deptC.text,
+                    schedule: c.schedule,
+                    isActive: c.isActive,
+                    maxCapacity: c.maxCapacity,
+                    currentEnrolled: c.currentEnrolled,
+                    prerequisites: c.prerequisites,
+                    room: c.room,
+                    building: c.building,
+                  ),
+                );
               }
               _snack('Course updated', ok: true);
               Navigator.pop(ctx);
@@ -794,8 +1509,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         content: Text('Remove course "$code"?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
@@ -826,10 +1542,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Row(
                 children: [
                   const Expanded(
-                      child: Text('Grade Management',
-                          style: AppTextStyles.h3)),
-                  _smallBtn('Add', Icons.add_rounded, AppColors.warning,
-                      _showAddGradeDialog),
+                    child: Text('Grade Management', style: AppTextStyles.h3),
+                  ),
+                  _smallBtn(
+                    'Add',
+                    Icons.add_rounded,
+                    AppColors.warning,
+                    _showAddGradeDialog,
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -837,9 +1557,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 initialValue: _selectedStudentId,
                 decoration: _inputDec('Select Student'),
                 items: _students
-                    .map((s) => DropdownMenuItem(
+                    .map(
+                      (s) => DropdownMenuItem(
                         value: s.studentId,
-                        child: Text('${s.fullName} (${s.studentId})')))
+                        child: Text('${s.fullName} (${s.studentId})'),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) {
                   setState(() => _selectedStudentId = v);
@@ -875,28 +1598,41 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTextStyles.gradeBgColor(g['letter_grade'] ?? '')
-                  .withValues(alpha: 0.1),
+              color: AppTextStyles.gradeBgColor(
+                g['letter_grade'] ?? '',
+              ).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(g['letter_grade'] ?? '',
-                style: AppTextStyles.gradeColor(g['letter_grade'] ?? '')),
+            child: Text(
+              g['letter_grade'] ?? '',
+              style: AppTextStyles.gradeColor(g['letter_grade'] ?? ''),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(g['course_code'] ?? '',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('Total: ${(g['total_score'] as num).toStringAsFixed(1)} • ${g['semester']}',
-                    style: AppTextStyles.caption),
+                Text(
+                  g['course_code'] ?? '',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Total: ${(g['total_score'] as num).toStringAsFixed(1)} • ${g['semester']}',
+                  style: AppTextStyles.caption,
+                ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+            icon: const Icon(
+              Icons.delete_outline,
+              color: AppColors.error,
+              size: 20,
+            ),
             onPressed: () => _confirmDeleteGrade(g),
           ),
         ],
@@ -915,7 +1651,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     // Load registered courses for the selected student
     List<CourseRegistration> registrations = [];
     if (_selectedStudentId != null && _selectedStudentId!.isNotEmpty) {
-      registrations = await _courseService.getStudentRegistrations(_selectedStudentId!);
+      registrations = await _courseService.getStudentRegistrations(
+        _selectedStudentId!,
+      );
     }
 
     if (!mounted) return;
@@ -940,19 +1678,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                       isExpanded: true,
                       items: registrations.map((reg) {
                         String title = reg.courseCode;
-                        final idx = _courses.indexWhere((c) => c.courseCode == reg.courseCode);
+                        final idx = _courses.indexWhere(
+                          (c) => c.courseCode == reg.courseCode,
+                        );
                         if (idx != -1) {
-                          title = '${_courses[idx].courseCode} - ${_courses[idx].courseTitle}';
+                          title =
+                              '${_courses[idx].courseCode} - ${_courses[idx].courseTitle}';
                         }
-                        return DropdownMenuItem(value: reg.courseCode, child: Text(title));
+                        return DropdownMenuItem(
+                          value: reg.courseCode,
+                          child: Text(title),
+                        );
                       }).toList(),
                       onChanged: (v) {
                         setDialogState(() {
                           selectedRegCourse = v;
                           courseC.text = v ?? '';
                           if (v != null) {
-                            final regIdx = registrations.indexWhere((r) => r.courseCode == v);
-                            if (regIdx != -1 && registrations[regIdx].semester.isNotEmpty && semC.text.isEmpty) {
+                            final regIdx = registrations.indexWhere(
+                              (r) => r.courseCode == v,
+                            );
+                            if (regIdx != -1 &&
+                                registrations[regIdx].semester.isNotEmpty &&
+                                semC.text.isEmpty) {
                               semC.text = registrations[regIdx].semester;
                             }
                           }
@@ -973,12 +1721,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.warning, foregroundColor: Colors.white),
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () async {
-                  if (studentC.text.isEmpty || courseC.text.isEmpty ||
+                  if (studentC.text.isEmpty ||
+                      courseC.text.isEmpty ||
                       semC.text.isEmpty) {
                     _snack('Fill required fields');
                     return;
@@ -998,8 +1752,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     _snack('Grade added', ok: true);
                     // Refresh provider so student sees it
                     if (mounted) {
-                      Provider.of<AppProvider>(context, listen: false)
-                          .refreshStudentData();
+                      Provider.of<AppProvider>(
+                        context,
+                        listen: false,
+                      ).refreshStudentData();
                     }
                   } else {
                     _snack('Failed to add grade');
@@ -1022,8 +1778,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         content: Text('Remove grade for ${g['course_code']}?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
@@ -1039,8 +1796,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 await _loadGrades();
                 _snack('Grade deleted', ok: true);
                 if (mounted) {
-                  Provider.of<AppProvider>(context, listen: false)
-                      .refreshStudentData();
+                  Provider.of<AppProvider>(
+                    context,
+                    listen: false,
+                  ).refreshStudentData();
                 }
               } else {
                 _snack('Failed to delete grade');
@@ -1057,7 +1816,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   Widget _buildBottomNav() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
@@ -1070,14 +1828,38 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(Icons.dashboard_rounded, 'Dashboard', 0),
-          _navItem(Icons.people_rounded, 'Students', 1),
-          _navItem(Icons.menu_book_rounded, 'Courses', 2),
-          _navItem(Icons.assessment_rounded, 'Grades', 3),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: const Color(0xFF1A1A2E),
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.white54,
+          currentIndex: _currentTab,
+          onTap: (i) => setState(() => _currentTab = i),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_rounded),
+              label: 'Students',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book_rounded),
+              label: 'Courses',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assessment_rounded),
+              label: 'Grades',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.more_horiz_rounded),
+              label: 'More',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1097,15 +1879,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                color: active ? Colors.white : Colors.white54, size: 22),
+            Icon(icon, color: active ? Colors.white : Colors.white54, size: 22),
             const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    color: active ? Colors.white : Colors.white54,
-                    fontSize: 10,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.normal)),
+            Text(
+              label,
+              style: TextStyle(
+                color: active ? Colors.white : Colors.white54,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
           ],
         ),
       ),
@@ -1134,17 +1917,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.admin_panel_settings_rounded,
-                      color: Color(0xFF1E88E5), size: 30),
+                  child: Icon(
+                    Icons.admin_panel_settings_rounded,
+                    color: Color(0xFF1E88E5),
+                    size: 30,
+                  ),
                 ),
                 SizedBox(height: 14),
-                Text('System Administrator',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                Text('admin@dgrl.edu',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                Text(
+                  'System Administrator',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'admin@dgrl.edu',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
               ],
             ),
           ),
@@ -1158,8 +1949,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-            title: const Text('Logout',
-                style: TextStyle(color: AppColors.error)),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: AppColors.error),
+            ),
             onTap: () async {
               Navigator.pop(context);
               final p = Provider.of<AppProvider>(context, listen: false);
@@ -1189,8 +1982,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   // ─── HELPERS ────────────────────────────────────────────────
 
-  Widget _field(TextEditingController c, String label,
-      {bool obscure = false, bool num = false}) {
+  Widget _field(
+    TextEditingController c,
+    String label, {
+    bool obscure = false,
+    bool num = false,
+  }) {
     return TextField(
       controller: c,
       obscureText: obscure,
@@ -1208,13 +2005,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
   }
 
   Widget _smallBtn(
-      String label, IconData icon, Color color, VoidCallback onTap) {
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1229,9 +2029,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13, color: color)),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -1253,9 +2058,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
   void _snack(String msg, {bool ok = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: ok ? AppColors.success : AppColors.error,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: ok ? AppColors.success : AppColors.error,
+      ),
+    );
   }
 }

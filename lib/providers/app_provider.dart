@@ -26,6 +26,7 @@ class AppProvider with ChangeNotifier {
   List<Course> _courses = [];
   List<Notification> _notifications = [];
   int _unreadNotificationCount = 0;
+  String _appTheme = 'system';
 
   Student? get currentStudent => _currentStudent;
   List<Grade> get grades => _grades;
@@ -40,6 +41,12 @@ class AppProvider with ChangeNotifier {
   List<Notification> get notifications => _notifications;
   int get unreadNotificationCount => _unreadNotificationCount;
   AuthService get authService => _authService;
+  String get appTheme => _appTheme;
+
+  void setTheme(String theme) {
+    _appTheme = theme;
+    notifyListeners();
+  }
 
   Future<void> initialize() async {
     _isLoading = true;
@@ -182,7 +189,7 @@ class AppProvider with ChangeNotifier {
   Future<void> addGrade(Grade grade) async {
     await _gradeService.addGrade(grade);
     await loadStudentData();
-    
+
     // Refresh notifications to show new grade notification
     await loadNotifications();
   }
@@ -190,24 +197,24 @@ class AppProvider with ChangeNotifier {
   Future<void> addCourse(Course course) async {
     await _gradeService.addCourse(course);
     _courses = await _gradeService.getAllCourses();
-    
+
     // Refresh notifications to show new course notification
     await loadNotifications();
-    
+
     notifyListeners();
   }
-  
+
   // Method to refresh all student data (called when admin adds data)
   Future<void> refreshStudentData() async {
     if (_currentStudent == null) return;
-    
+
     await loadStudentData();
   }
-  
+
   // Real-time data synchronization
   Future<void> syncWithAdmin() async {
     if (_currentStudent == null) return;
-    
+
     // Reload grades, courses, and notifications
     await loadStudentData();
   }
@@ -228,7 +235,8 @@ class AppProvider with ChangeNotifier {
       'age': age ?? _currentStudent!.age,
     };
     // Use the provided photoUrl even if null (to clear the photo)
-    if (updates.containsKey('photo_url') || photoUrl != _currentStudent!.photoUrl) {
+    if (updates.containsKey('photo_url') ||
+        photoUrl != _currentStudent!.photoUrl) {
       updates['photo_url'] = photoUrl;
     }
 
@@ -282,7 +290,7 @@ class AppProvider with ChangeNotifier {
     String type = 'student_request',
   }) async {
     if (_currentStudent == null) return;
-    
+
     await _realtimeService.sendNotificationToAdmin(
       title: title,
       message: message,
@@ -294,12 +302,14 @@ class AppProvider with ChangeNotifier {
   // Check for real-time updates from admin
   Future<void> checkForAdminUpdates() async {
     if (_currentStudent == null) return;
-    
-    final hasUpdates = await _realtimeService.hasPendingUpdates(_currentStudent!.studentId);
+
+    final hasUpdates = await _realtimeService.hasPendingUpdates(
+      _currentStudent!.studentId,
+    );
     if (hasUpdates) {
       // Refresh data if there are pending updates
       await loadStudentData();
-      
+
       // Add notification about the update
       await addNotification(
         title: 'Data Updated',
@@ -312,7 +322,7 @@ class AppProvider with ChangeNotifier {
   // Initialize real-time listeners
   void initializeRealtimeListeners() {
     if (_currentStudent == null) return;
-    
+
     // Listen for student data changes
     getStudentDataStream().listen((snapshot) {
       if (snapshot.exists) {
@@ -324,7 +334,9 @@ class AppProvider with ChangeNotifier {
 
     // Listen for grade changes
     getStudentGradesStream().listen((snapshot) async {
-      _grades = await _gradeService.getGradesForStudent(_currentStudent!.studentId);
+      _grades = await _gradeService.getGradesForStudent(
+        _currentStudent!.studentId,
+      );
       notifyListeners();
     });
 

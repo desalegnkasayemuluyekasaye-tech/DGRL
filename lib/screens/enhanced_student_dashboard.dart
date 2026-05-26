@@ -191,6 +191,12 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
   }
 
   Widget _buildDashboardTab(AppProvider provider) {
+    if (provider.isLoading && provider.currentStudent == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     final student = provider.currentStudent;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),

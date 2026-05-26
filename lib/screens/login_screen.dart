@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import 'main_screen.dart';
 import 'admin_panel_screen.dart';
@@ -31,11 +34,37 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeIn = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeInOut,
-    );
+    _fadeIn = CurvedAnimation(parent: _animController, curve: Curves.easeInOut);
     _animController.forward();
+    // Load saved credentials if user opted to "Remember me"
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString('logged_in_student');
+      if (userJson == null) return;
+      final data = jsonDecode(userJson) as Map<String, dynamic>;
+      // Admin stored as username; students have student_id or email
+      final username = data['username'] as String?;
+      final studentId = data['student_id'] as String?;
+      final email = data['email'] as String?;
+      final password = data['password'] as String?;
+      if (password != null) {
+        setState(() {
+          _rememberMe = true;
+          if (username != null) {
+            _idController.text = username;
+          } else if (studentId != null) {
+            _idController.text = studentId;
+          } else if (email != null) {
+            _idController.text = email;
+          }
+          _passwordController.text = password;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -51,24 +80,56 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _errorMessage = null);
 
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final role = await provider.login(
-      _idController.text.trim(),
-      _passwordController.text,
-    );
 
-    if (!mounted) return;
+    try {
+      final role = await provider.login(
+        _idController.text.trim(),
+        _passwordController.text,
+        remember: _rememberMe,
+      );
 
-    if (role == 'student') {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
-    } else if (role == 'admin') {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
-      );
-    } else {
-      setState(() => _errorMessage = 'Invalid ID/Email or Password');
+      if (!mounted) return;
+
+      if (role == 'student') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      } else if (role == 'admin') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
+        );
+      } else {
+        setState(() => _errorMessage = 'Invalid ID/Email or Password');
+      }
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'unavailable' || e.code == 'network-request-failed') {
+        _showNetworkError();
+      } else {
+        setState(() => _errorMessage = 'Invalid ID/Email or Password');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('unknownhost') ||
+          msg.contains('unable to resolve host')) {
+        _showNetworkError();
+      } else {
+        setState(() => _errorMessage = 'Invalid ID/Email or Password');
+      }
     }
+  }
+
+  void _showNetworkError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No internet connection. Please check your data or Wi-Fi.',
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+      ),
+    );
   }
 
   Future<void> _contactAdmin() async {
@@ -97,9 +158,7 @@ class _LoginScreenState extends State<LoginScreen>
                 right: 0,
                 child: SizedBox(
                   height: 120,
-                  child: CustomPaint(
-                    painter: _WavePainter(),
-                  ),
+                  child: CustomPaint(painter: _WavePainter()),
                 ),
               ),
 
@@ -119,7 +178,9 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2D6DE9).withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFF2D6DE9,
+                              ).withValues(alpha: 0.3),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
@@ -133,11 +194,7 @@ class _LoginScreenState extends State<LoginScreen>
                               size: 44,
                               color: Colors.white,
                             ),
-                            Icon(
-                              Icons.lock,
-                              size: 18,
-                              color: Colors.white,
-                            ),
+                            Icon(Icons.lock, size: 18, color: Colors.white),
                           ],
                         ),
                       ),
@@ -204,7 +261,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -226,8 +285,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                               style: const TextStyle(fontSize: 15),
-                              validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Required' : null,
+                              validator: (v) => v == null || v.trim().isEmpty
+                                  ? 'Required'
+                                  : null,
                             ),
                             const SizedBox(height: 20),
                             const Align(
@@ -246,7 +306,8 @@ class _LoginScreenState extends State<LoginScreen>
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) => _handleSignIn(), // FIX 2: Allows login via keyboard "Done" action
+                              onFieldSubmitted: (_) =>
+                                  _handleSignIn(), // FIX 2: Allows login via keyboard "Done" action
                               decoration: InputDecoration(
                                 hintText: 'Enter your password',
                                 hintStyle: const TextStyle(
@@ -266,14 +327,17 @@ class _LoginScreenState extends State<LoginScreen>
                                     color: const Color(0xFF9CA3AF),
                                     size: 20,
                                   ),
-                                  onPressed: () =>
-                                      setState(() => _obscurePassword = !_obscurePassword),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
                                 ),
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -296,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               style: const TextStyle(fontSize: 15),
                               validator: (v) =>
-                              v == null || v.isEmpty ? 'Required' : null,
+                                  v == null || v.isEmpty ? 'Required' : null,
                             ),
                           ],
                         ),
@@ -307,21 +371,18 @@ class _LoginScreenState extends State<LoginScreen>
                         children: [
                           Row(
                             children: [
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: Checkbox(
-                                  value: _rememberMe,
-                                  onChanged: (v) => setState(
-                                        () => _rememberMe = v ?? false,
-                                  ),
-                                  activeColor: const Color(0xFF2D6DE9),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: (v) =>
+                                    setState(() => _rememberMe = v ?? false),
+                                activeColor: const Color(0xFF2D6DE9),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
                               ),
-                              const SizedBox(width: 8),
                               const Text(
                                 'Remember me',
                                 style: TextStyle(
@@ -354,7 +415,9 @@ class _LoginScreenState extends State<LoginScreen>
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF44336).withValues(alpha: 0.08),
+                            color: const Color(
+                              0xFFF44336,
+                            ).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -388,34 +451,37 @@ class _LoginScreenState extends State<LoginScreen>
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2D6DE9),
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                const Color(0xFF2D6DE9).withValues(alpha: 0.6),
-                                shadowColor:
-                                const Color(0xFF2D6DE9).withValues(alpha: 0.4),
+                                disabledBackgroundColor: const Color(
+                                  0xFF2D6DE9,
+                                ).withValues(alpha: 0.6),
+                                shadowColor: const Color(
+                                  0xFF2D6DE9,
+                                ).withValues(alpha: 0.4),
                                 elevation: 4,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              onPressed:
-                              provider.isLoading ? null : _handleSignIn,
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : _handleSignIn,
                               child: provider.isLoading
                                   ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
                                   : const Text(
-                                'Login',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                                      'Login',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           );
                         },
@@ -439,7 +505,9 @@ class _LoginScreenState extends State<LoginScreen>
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 40), // Balanced scroll cushion space
+                      const SizedBox(
+                        height: 40,
+                      ), // Balanced scroll cushion space
                     ],
                   ),
                 ),
@@ -470,16 +538,22 @@ class _WavePainter extends CustomPainter {
     final path1 = Path();
     path1.moveTo(0, size.height * 0.5);
     path1.quadraticBezierTo(
-      size.width * 0.15, size.height * 0.1,
-      size.width * 0.35, size.height * 0.4,
+      size.width * 0.15,
+      size.height * 0.1,
+      size.width * 0.35,
+      size.height * 0.4,
     );
     path1.quadraticBezierTo(
-      size.width * 0.55, size.height * 0.7,
-      size.width * 0.75, size.height * 0.25,
+      size.width * 0.55,
+      size.height * 0.7,
+      size.width * 0.75,
+      size.height * 0.25,
     );
     path1.quadraticBezierTo(
-      size.width * 0.9, size.height * 0.0,
-      size.width, size.height * 0.2,
+      size.width * 0.9,
+      size.height * 0.0,
+      size.width,
+      size.height * 0.2,
     );
     path1.lineTo(size.width, size.height);
     path1.lineTo(0, size.height);
@@ -489,16 +563,22 @@ class _WavePainter extends CustomPainter {
     final path2 = Path();
     path2.moveTo(0, size.height * 0.65);
     path2.quadraticBezierTo(
-      size.width * 0.2, size.height * 0.25,
-      size.width * 0.45, size.height * 0.55,
+      size.width * 0.2,
+      size.height * 0.25,
+      size.width * 0.45,
+      size.height * 0.55,
     );
     path2.quadraticBezierTo(
-      size.width * 0.65, size.height * 0.8,
-      size.width * 0.85, size.height * 0.4,
+      size.width * 0.65,
+      size.height * 0.8,
+      size.width * 0.85,
+      size.height * 0.4,
     );
     path2.quadraticBezierTo(
-      size.width * 0.95, size.height * 0.2,
-      size.width, size.height * 0.35,
+      size.width * 0.95,
+      size.height * 0.2,
+      size.width,
+      size.height * 0.35,
     );
     path2.lineTo(size.width, size.height);
     path2.lineTo(0, size.height);
@@ -508,12 +588,16 @@ class _WavePainter extends CustomPainter {
     final path3 = Path();
     path3.moveTo(0, size.height * 0.75);
     path3.quadraticBezierTo(
-      size.width * 0.25, size.height * 0.45,
-      size.width * 0.5, size.height * 0.7,
+      size.width * 0.25,
+      size.height * 0.45,
+      size.width * 0.5,
+      size.height * 0.7,
     );
     path3.quadraticBezierTo(
-      size.width * 0.7, size.height * 0.85,
-      size.width, size.height * 0.55,
+      size.width * 0.7,
+      size.height * 0.85,
+      size.width,
+      size.height * 0.55,
     );
     path3.lineTo(size.width, size.height);
     path3.lineTo(0, size.height);

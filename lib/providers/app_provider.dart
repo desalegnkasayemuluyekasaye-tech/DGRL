@@ -50,16 +50,21 @@ class AppProvider with ChangeNotifier {
 
   Future<void> initialize() async {
     _isLoading = true;
-    notifyListeners();
+    Future.microtask(() => notifyListeners());
 
     try {
       _isLoggedIn = await _authService.isLoggedIn();
 
       if (_isLoggedIn) {
         final userData = await _authService.getCurrentUser();
-        if (userData != null && userData['studentId'] != null) {
+        if (userData != null && userData['student_id'] != null) {
           _currentStudent = Student.fromMap(userData);
-          await loadStudentData();
+          try {
+            await loadStudentData();
+          } catch (e) {
+            print('Offline: could not load student data: $e');
+          }
+          initializeRealtimeListeners();
         }
       }
     } catch (_) {
@@ -67,33 +72,48 @@ class AppProvider with ChangeNotifier {
       _currentStudent = null;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      Future.microtask(() => notifyListeners());
     }
   }
 
   /// Returns 'student', 'admin', or null on failure.
-  Future<String?> login(String id, String password) async {
+  Future<String?> login(
+    String id,
+    String password, {
+    bool remember = false,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
-    final role = await _authService.login(id, password);
+    try {
+      final role = await _authService.login(id, password, remember: remember);
 
-    if (role != null) {
-      final userData = await _authService.getCurrentUser();
-      if (userData != null) {
-        if (role == 'student') {
-          _currentStudent = Student.fromMap(userData);
-          await loadStudentData();
-        } else {
-          _currentStudent = null;
+      if (role != null) {
+        final userData = await _authService.getCurrentUser();
+        if (userData != null) {
+          if (role == 'student') {
+            _currentStudent = Student.fromMap(userData);
+            try {
+              await loadStudentData();
+            } catch (e) {
+              print('Offline: could not load student data: $e');
+            }
+            initializeRealtimeListeners();
+          } else {
+            _currentStudent = null;
+          }
         }
+        _isLoggedIn = true;
       }
-      _isLoggedIn = true;
-    }
 
-    _isLoading = false;
-    notifyListeners();
-    return role;
+      _isLoading = false;
+      notifyListeners();
+      return role;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> logout() async {
@@ -341,8 +361,10 @@ class AppProvider with ChangeNotifier {
     });
 
     // Listen for course changes
-    getCoursesStream().listen((snapshot) async {
-      _courses = await _gradeService.getAllCourses();
+    getCoursesStream().listen((snapshot) {
+      _courses = snapshot.docs
+          .map((doc) => Course.fromMap(doc.data()))
+          .toList();
       notifyListeners();
     });
 

@@ -58,11 +58,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final img = await _picker.pickImage(source: source, maxWidth: 512, maxHeight: 512);
-    if (img != null) {
-      final bytes = await img.readAsBytes();
-      setState(() => _profileImageBytes = bytes);
+  Future<void> _takeCameraPhoto() async {
+    try {
+      final img = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 512,
+        maxHeight: 512,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+      if (img != null) {
+        final bytes = await img.readAsBytes();
+        setState(() => _profileImageBytes = bytes);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Camera is not available. Try the gallery instead.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final img = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
+      if (img != null) {
+        final bytes = await img.readAsBytes();
+        setState(() => _profileImageBytes = bytes);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to open gallery. Please try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -101,9 +140,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppColors.info),
                 ),
                 title: const Text('Take Photo'),
+                subtitle: const Text('Uses device camera'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
+                  _takeCameraPhoto();
                 },
               ),
               ListTile(
@@ -117,9 +157,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppColors.success),
                 ),
                 title: const Text('Choose from Gallery'),
+                subtitle: const Text('Browse photo library'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
+                  _pickFromGallery();
                 },
               ),
             ],
@@ -140,47 +181,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final studentId = p.currentStudent?.studentId;
       String? finalPhotoUrl = _photoUrl;
 
-      // Step 1: Upload new image if one was picked
-      if (_profileImageBytes != null && studentId != null) {
-        final uploadedUrl = await _imageUploadService.uploadImageBytes(
-          imageBytes: _profileImageBytes!,
-          studentId: studentId,
-        );
-        if (uploadedUrl == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Image upload failed. Please try again.'),
-                backgroundColor: AppColors.error,
-              ),
-            );
+        // Step 1: Upload new image if one was picked
+        if (_profileImageBytes != null && studentId != null) {
+          final uploadedUrl = await _imageUploadService.uploadImageBytes(
+            imageBytes: _profileImageBytes!,
+            studentId: studentId,
+          );
+          if (uploadedUrl == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Image upload failed. Please try again.'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+            setState(() => _isSaving = false);
+            return;
           }
-          setState(() => _isSaving = false);
-          return;
+          finalPhotoUrl = uploadedUrl;
+          // Update local state so the UI reflects the new photo immediately
+          _photoUrl = uploadedUrl;
         }
-        finalPhotoUrl = uploadedUrl;
-      }
 
-      // Step 2: Save profile data to Firestore
-      await p.updateStudentProfile(
-        fullName: _nameController.text.trim(),
-        sex: _selectedSex,
-        phone: _phoneController.text.trim().isEmpty
-            ? null
-            : _phoneController.text.trim(),
-        age: _ageController.text.trim().isEmpty
-            ? null
-            : int.tryParse(_ageController.text.trim()),
-        photoUrl: finalPhotoUrl,
-      );
+        // Step 2: Save profile data to Firestore
+        await p.updateStudentProfile(
+          fullName: _nameController.text.trim(),
+          sex: _selectedSex,
+          phone: _phoneController.text.trim().isEmpty
+              ? null
+              : _phoneController.text.trim(),
+          age: _ageController.text.trim().isEmpty
+              ? null
+              : int.tryParse(_ageController.text.trim()),
+          photoUrl: finalPhotoUrl,
+        );
 
-      // Step 3: Clear local state on success
-      _profileImageBytes = null;
-      if (!mounted) return;
-      setState(() {
-        _isEditing = false;
-        _isSaving = false;
-      });
+        // Step 3: Clear local state on success
+        _profileImageBytes = null;
+        if (!mounted) return;
+        setState(() {
+          _isEditing = false;
+          _isSaving = false;
+        });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully!'),

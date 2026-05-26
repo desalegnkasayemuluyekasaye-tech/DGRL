@@ -25,7 +25,7 @@ class ThemeProvider with ChangeNotifier {
   ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primarySwatch: Colors.indigo,
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
     primaryColor: const Color(0xFF3949AB),
     scaffoldBackgroundColor: const Color(0xFFF5F5F5),
     appBarTheme: const AppBarTheme(
@@ -43,7 +43,7 @@ class ThemeProvider with ChangeNotifier {
   ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    primarySwatch: Colors.indigo,
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: Brightness.dark),
     primaryColor: const Color(0xFF3949AB),
     scaffoldBackgroundColor: const Color(0xFF121212),
     appBarTheme: const AppBarTheme(

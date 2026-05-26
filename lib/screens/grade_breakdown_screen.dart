@@ -200,7 +200,7 @@ class GradeBreakdownScreen extends StatelessWidget {
           child: LinearProgressIndicator(
             value: (pct / max).clamp(0.0, 1.0),
             backgroundColor: Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            color: color,
             minHeight: 10,
           ),
         ),

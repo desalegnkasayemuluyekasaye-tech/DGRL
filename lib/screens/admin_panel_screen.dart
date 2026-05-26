@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/app_provider.dart';
 import '../constants/theme_constants.dart';
 import '../services/firestore_service.dart';
 import '../services/course_service.dart';
 import '../services/grade_service.dart';
+import '../services/excel_import_service.dart';
 import '../models/student.dart';
 import '../models/course.dart';
 import '../models/grade.dart';
@@ -395,46 +397,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.12),
+                  color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: iconColor, size: 22),
               ),
               const SizedBox(height: 8),
-              Text(label, style: AppTextStyles.bodySmall),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _actionCard(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 26),
-              ),
-              const SizedBox(height: 10),
               Text(label, style: AppTextStyles.bodySmall),
             ],
           ),
@@ -501,28 +469,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         ],
       ),
     );
-  }
-
-  String _relativeDate(DateTime d) {
-    return '${d.day} ${_monthName(d.month)} ${d.year}';
-  }
-
-  String _monthName(int m) {
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return names[((m - 1).clamp(0, 11)).toInt()];
   }
 
   void _showAccountSettings() {
@@ -676,28 +622,26 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             title: const Text('App System Theme'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RadioListTile<String>(
-                  title: const Text('System Default'),
-                  value: 'system',
-                  groupValue: tmp,
-                  onChanged: (v) => setDialogState(() => tmp = v ?? 'system'),
-                ),
-                RadioListTile<String>(
-                  title: const Text('Light Theme'),
-                  value: 'light',
-                  groupValue: tmp,
-                  onChanged: (v) => setDialogState(() => tmp = v ?? 'light'),
-                ),
-                RadioListTile<String>(
-                  title: const Text('Dark Theme'),
-                  value: 'dark',
-                  groupValue: tmp,
-                  onChanged: (v) => setDialogState(() => tmp = v ?? 'dark'),
-                ),
-              ],
+            content: RadioGroup<String>(
+              groupValue: tmp,
+              onChanged: (v) => setDialogState(() => tmp = v ?? 'system'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    title: const Text('System Default'),
+                    value: 'system',
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Light Theme'),
+                    value: 'light',
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Dark Theme'),
+                    value: 'dark',
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -779,8 +723,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   // ─── MORE TAB ─────────────────────────────────────────────
 
   Widget _buildMoreTab() {
-    const adminEmail = 'admin@dgrl.edu';
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -851,6 +793,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                   title: const Text('App System Theme'),
                   onTap: _showThemeDialog,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.file_upload_outlined,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text('Import from Excel'),
+                  subtitle: const Text('Students, Courses, or Grades'),
+                  onTap: _showImportDialog,
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -944,22 +896,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildStudentsTab() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text('Student Records', style: AppTextStyles.h3),
-              ),
-              _smallBtn(
-                'Add',
-                Icons.add_rounded,
-                AppColors.info,
-                _showAddStudentDialog,
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text('Student Records', style: AppTextStyles.h3),
+                ),
+                _smallBtn(
+                  'Import',
+                  Icons.file_upload_outlined,
+                  AppColors.success,
+                  () => _importStudents(),
+                ),
+                const SizedBox(width: 8),
+                _smallBtn(
+                  'Add',
+                  Icons.add_rounded,
+                  AppColors.info,
+                  () => _showAddStudentDialog(),
+                ),
+              ],
+            ),
           ),
-        ),
         Expanded(
           child: _students.isEmpty
               ? _emptyState('No students yet')
@@ -1059,6 +1018,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     final ageC = TextEditingController();
     String? sex;
 
+    void _autoFill() {
+      final raw = idC.text.trim();
+      if (raw.isNotEmpty) {
+        final normalized = _normalizeStudentId(raw);
+        if (normalized != raw) {
+          idC.text = normalized;
+          idC.selection = TextSelection.fromPosition(
+            TextPosition(offset: normalized.length),
+          );
+        }
+        emailC.text = '$normalized@bdu.edu.et';
+        passC.text = normalized;
+      }
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1067,7 +1041,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _field(idC, 'Student ID*'),
+              TextField(
+                controller: idC,
+                decoration: _inputDec('Student ID* (e.g. bdu12345)'),
+                onChanged: (_) => _autoFill(),
+              ),
               const SizedBox(height: 10),
               _field(nameC, 'Full Name*'),
               const SizedBox(height: 10),
@@ -1075,9 +1053,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               const SizedBox(height: 10),
               _field(batchC, 'Batch*'),
               const SizedBox(height: 10),
-              _field(emailC, 'Email*'),
+              TextField(
+                controller: emailC,
+                readOnly: true,
+                decoration: _inputDec('Email (auto-generated)'),
+                style: const TextStyle(color: Colors.grey),
+              ),
               const SizedBox(height: 10),
-              _field(passC, 'Password*', obscure: true),
+              TextField(
+                controller: passC,
+                readOnly: true,
+                obscureText: true,
+                decoration: _inputDec('Password (auto-set to Student ID)'),
+                style: const TextStyle(color: Colors.grey),
+              ),
               const SizedBox(height: 10),
               _field(phoneC, 'Phone'),
               const SizedBox(height: 10),
@@ -1089,6 +1078,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
                 onChanged: (v) => sex = v,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Student ID must start with "bdu" prefix.\nEmail & password are auto-generated from Student ID.',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -1104,24 +1098,26 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              if (idC.text.isEmpty ||
-                  nameC.text.isEmpty ||
-                  emailC.text.isEmpty ||
-                  passC.text.isEmpty) {
-                _snack('Fill required fields');
+              final normalizedId = _normalizeStudentId(idC.text);
+              if (normalizedId.isEmpty || nameC.text.trim().isEmpty) {
+                _snack('Student ID and Full Name are required');
                 return;
               }
               try {
                 await _firestoreService.addStudent(
                   Student(
-                    studentId: idC.text,
-                    fullName: nameC.text,
-                    department: deptC.text,
-                    batch: batchC.text,
-                    email: emailC.text,
-                    password: passC.text,
-                    phone: phoneC.text,
-                    age: int.tryParse(ageC.text),
+                    studentId: normalizedId,
+                    fullName: nameC.text.trim(),
+                    department: deptC.text.trim(),
+                    batch: batchC.text.trim().isNotEmpty
+                        ? batchC.text.trim()
+                        : '2024',
+                    email: '$normalizedId@bdu.edu.et',
+                    password: normalizedId,
+                    phone: phoneC.text.trim().isNotEmpty
+                        ? phoneC.text.trim()
+                        : null,
+                    age: int.tryParse(ageC.text.trim()),
                     sex: sex,
                   ),
                 );
@@ -1249,10 +1245,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 child: Text('Course Records', style: AppTextStyles.h3),
               ),
               _smallBtn(
+                'Import',
+                Icons.file_upload_outlined,
+                AppColors.info,
+                () => _importCourses(),
+              ),
+              const SizedBox(width: 8),
+              _smallBtn(
                 'Add',
                 Icons.add_rounded,
                 AppColors.success,
-                _showAddCourseDialog,
+                () => _showAddCourseDialog(),
               ),
             ],
           ),
@@ -1414,6 +1417,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               Navigator.pop(ctx);
               if (ok) {
                 await _loadCourses();
+                if (mounted) {
+                  Provider.of<AppProvider>(context, listen: false)
+                      .refreshStudentData();
+                }
                 _snack('Course added', ok: true);
               } else {
                 _snack('Failed to add course');
@@ -1490,6 +1497,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               _snack('Course updated', ok: true);
               Navigator.pop(ctx);
               await _loadCourses();
+              if (mounted) {
+                Provider.of<AppProvider>(context, listen: false)
+                    .refreshStudentData();
+              }
             },
             child: const Text('Update'),
           ),
@@ -1521,6 +1532,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               _snack('Course deleted');
               Navigator.pop(ctx);
               await _loadCourses();
+              if (mounted) {
+                Provider.of<AppProvider>(context, listen: false)
+                    .refreshStudentData();
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
@@ -1545,10 +1560,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     child: Text('Grade Management', style: AppTextStyles.h3),
                   ),
                   _smallBtn(
+                    'Import',
+                    Icons.file_upload_outlined,
+                    AppColors.success,
+                    () => _importGrades(),
+                  ),
+                  const SizedBox(width: 8),
+                  _smallBtn(
                     'Add',
                     Icons.add_rounded,
                     AppColors.warning,
-                    _showAddGradeDialog,
+                    () => _showAddGradeDialog(),
                   ),
                 ],
               ),
@@ -1673,7 +1695,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   const SizedBox(height: 10),
                   if (registrations.isNotEmpty)
                     DropdownButtonFormField<String>(
-                      value: selectedRegCourse,
+                      initialValue: selectedRegCourse,
                       decoration: _inputDec('Course Code*'),
                       isExpanded: true,
                       items: registrations.map((reg) {
@@ -1731,26 +1753,49 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
-                  if (studentC.text.isEmpty ||
-                      courseC.text.isEmpty ||
-                      semC.text.isEmpty) {
+                  final sid = _normalizeStudentId(studentC.text);
+                  final ccode = courseC.text.trim();
+                  final sem = semC.text.trim();
+
+                  if (sid.isEmpty || ccode.isEmpty || sem.isEmpty) {
                     _snack('Fill required fields');
                     return;
                   }
+
+                  // Cross-check student exists
+                  final sExists = await _studentExists(sid);
+                  if (!sExists) {
+                    _snack('Student "$sid" not found in database');
+                    return;
+                  }
+
+                  // Cross-check course exists
+                  final cExists = await _courseExists(ccode);
+                  if (!cExists) {
+                    _snack('Course "$ccode" not found in database');
+                    return;
+                  }
+
+                  // Prevent duplicate
+                  final dup = await _hasDuplicateGrade(sid, ccode, sem);
+                  if (dup) {
+                    _snack('Duplicate: "$sid" already has a grade for "$ccode" in "$sem"');
+                    return;
+                  }
+
                   final grade = Grade.create(
-                    studentId: studentC.text,
-                    courseCode: courseC.text,
+                    studentId: sid,
+                    courseCode: ccode,
                     midScore: double.tryParse(midC.text) ?? 0,
                     assignmentScore: double.tryParse(assignC.text) ?? 0,
                     finalScore: double.tryParse(finalC.text) ?? 0,
-                    semester: semC.text,
+                    semester: sem,
                   );
                   final ok = await _gradeService.addGrade(grade);
                   Navigator.pop(ctx);
                   if (ok) {
                     await _loadGrades();
                     _snack('Grade added', ok: true);
-                    // Refresh provider so student sees it
                     if (mounted) {
                       Provider.of<AppProvider>(
                         context,
@@ -1864,37 +1909,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
-  Widget _navItem(IconData icon, String label, int index) {
-    final active = _currentTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: active
-              ? const Color(0xFF1E88E5).withValues(alpha: 0.3)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: active ? Colors.white : Colors.white54, size: 22),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? Colors.white : Colors.white54,
-                fontSize: 10,
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ─── DRAWER ─────────────────────────────────────────────────
 
   Widget _buildDrawer() {
@@ -1980,6 +1994,380 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 
+  // ─── VALIDATION HELPERS ────────────────────────────────────
+
+  String _normalizeStudentId(String id) {
+    final trimmed = id.trim().toLowerCase();
+    if (trimmed.startsWith('bdu')) return trimmed;
+    return 'bdu$trimmed';
+  }
+
+  Future<bool> _studentExists(String studentId) async {
+    try {
+      final s = await _firestoreService.getStudentById(studentId);
+      return s != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _courseExists(String courseCode) async {
+    try {
+      final c = await _courseService.getCourse(courseCode);
+      return c != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _hasDuplicateGrade(
+      String studentId, String courseCode, String semester) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('grades')
+          .where('student_id', isEqualTo: studentId)
+          .where('course_code', isEqualTo: courseCode)
+          .where('semester', isEqualTo: semester)
+          .limit(1)
+          .get();
+      return snapshot.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── EXCEL IMPORT (staging preview then submit) ─────────────
+
+  /// Called from More tab — asks user which type to import
+  Future<void> _showImportDialog() async {
+    final importType = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import from Excel'),
+        content: const Text('Select the type of data to import:'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'students'),
+            child: const Text('Students'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'courses'),
+            child: const Text('Courses'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'grades'),
+            child: const Text('Grades'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (importType == null) return;
+    await _runImport(importType);
+  }
+
+  /// Direct import from Students tab
+  Future<void> _importStudents() => _runImport('students');
+
+  /// Direct import from Courses tab
+  Future<void> _importCourses() => _runImport('courses');
+
+  /// Direct import from Grades tab
+  Future<void> _importGrades() => _runImport('grades');
+
+  Future<void> _runImport(String importType) async {
+    if (!mounted) return;
+
+    final service = ExcelImportService();
+    final file = await service.pickExcelFile();
+    if (file == null || file.path == null) return;
+
+    if (!mounted) return;
+    _snack('Parsing file...');
+
+    // Parse into staging rows (no DB writes yet)
+    ParseResult? parseResult;
+    try {
+      parseResult = switch (importType) {
+        'students' => service.parseStudents(file.path!),
+        'courses' => service.parseCourses(file.path!),
+        'grades' => service.parseGrades(file.path!),
+        _ => null,
+      };
+    } catch (e) {
+      _snack('Parse failed: $e');
+      return;
+    }
+
+    if (parseResult == null || !mounted) return;
+
+    if (parseResult.rows.isEmpty) {
+      _snack('No valid rows found in file');
+      return;
+    }
+
+    // Show staging preview dialog
+    final confirmed = await _showStagingPreviewDialog(
+      importType: importType,
+      parseResult: parseResult,
+      service: service,
+    );
+
+    if (confirmed == true && mounted) {
+      await _loadAll();
+    }
+  }
+
+  Future<bool?> _showStagingPreviewDialog({
+    required String importType,
+    required ParseResult parseResult,
+    required ExcelImportService service,
+  }) {
+    final rowsNotifier = ValueNotifier<List<dynamic>>(List.from(parseResult.rows));
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        bool submitting = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final rows = rowsNotifier.value;
+
+            return AlertDialog(
+              title: Text('Preview: ${importType[0].toUpperCase()}${importType.substring(1)} Import'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${rows.length} rows loaded from file'),
+                    if (parseResult.errors.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text('Parse warnings:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ...parseResult.errors.map(
+                        (e) => Text('Row ${e.row}: ${e.message}', style: const TextStyle(fontSize: 11, color: Colors.orange)),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text('Editable preview:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: rows.length.clamp(0, 50),
+                        itemBuilder: (context, i) {
+                          final row = rows[i];
+                          return _buildEditableRow(importType, row, i);
+                        },
+                      ),
+                    ),
+                    if (rows.length > 50)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Showing first 50 of ${rows.length} rows', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      ),
+                    if (submitting)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: LinearProgressIndicator(),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          setDialogState(() => submitting = true);
+                          SubmitResult result;
+                          try {
+                            result = switch (importType) {
+                              'students' => await service.submitStudents(
+                                  rowsNotifier.value.cast<StagedStudentRow>(),
+                                ),
+                              'courses' => await service.submitCourses(
+                                  rowsNotifier.value.cast<StagedCourseRow>(),
+                                ),
+                              'grades' => await service.submitGrades(
+                                  rowsNotifier.value.cast<StagedGradeRow>(),
+                                ),
+                              _ => SubmitResult(
+                                  successCount: 0,
+                                  errorCount: 0,
+                                  errors: ['Invalid type'],
+                                ),
+                            };
+                          } catch (e) {
+                            setDialogState(() => submitting = false);
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text('Submit failed: $e'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx, true);
+
+                          // Show result dialog
+                          showDialog(
+                            context: ctx,
+                            builder: (rctx) => AlertDialog(
+                              title: Text(
+                                result.hasErrors
+                                    ? 'Completed with Errors'
+                                    : 'Import Successful',
+                              ),
+                              content: SizedBox(
+                                width: double.maxFinite,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Submitted: ${result.successCount}'),
+                                    Text('Errors: ${result.errorCount}'),
+                                    if (result.hasErrors) ...[
+                                      const SizedBox(height: 12),
+                                      const Text('Errors:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 4),
+                                      ...result.errors.map(
+                                        (e) => Text(e, style: const TextStyle(fontSize: 11, color: Colors.red)),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(rctx),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                  child: const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEditableRow(String importType, dynamic row, int index) {
+    // Controllers are stored per row instance
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              '${index + 1}.',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: switch (importType) {
+              'students' => _studentRowPreview(row as StagedStudentRow),
+              'courses' => _courseRowPreview(row as StagedCourseRow),
+              'grades' => _gradeRowPreview(row as StagedGradeRow),
+              _ => const SizedBox.shrink(),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _studentRowPreview(StagedStudentRow s) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _previewField(s.studentId, 90),
+          _previewField(s.fullName, 120),
+          _previewField(s.department, 100),
+          _previewField(s.batch, 50),
+          _previewField(s.phone, 100),
+          _previewField(s.ageStr, 40),
+          _previewField(s.sex, 60),
+        ],
+      ),
+    );
+  }
+
+  Widget _courseRowPreview(StagedCourseRow c) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _previewField(c.courseCode, 90),
+          _previewField(c.courseTitle, 120),
+          _previewField(c.creditHoursStr, 40),
+          _previewField(c.instructor, 100),
+          _previewField(c.semester, 80),
+          _previewField(c.department, 100),
+        ],
+      ),
+    );
+  }
+
+  Widget _gradeRowPreview(StagedGradeRow g) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _previewField(g.studentId, 90),
+          _previewField(g.courseCode, 90),
+          _previewField(g.midStr, 40),
+          _previewField(g.assignmentStr, 40),
+          _previewField(g.finalStr, 40),
+          _previewField(g.semester, 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _previewField(String value, double width) {
+    return Container(
+      width: width,
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        value,
+        style: const TextStyle(fontSize: 11),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
   // ─── HELPERS ────────────────────────────────────────────────
 
   Widget _field(
@@ -2015,29 +2403,33 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     Color color,
     VoidCallback onTap,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: color,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

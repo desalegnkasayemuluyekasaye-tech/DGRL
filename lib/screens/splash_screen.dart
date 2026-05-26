@@ -33,7 +33,9 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
     _controller.forward();
-    _initializeApp();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeApp();
+    });
   }
 
   Future<void> _initializeApp() async {
@@ -169,11 +171,9 @@ class _SplashScreenState extends State<SplashScreen>
                       SizedBox(
                         width: 36,
                         height: 36,
-                        child: CircularProgressIndicator(
+                        child:                         CircularProgressIndicator(
                           strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withValues(alpha: 0.8),
-                          ),
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                     ],

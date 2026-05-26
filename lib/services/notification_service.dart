@@ -32,10 +32,10 @@ class Notification {
 
   factory Notification.fromMap(Map<String, dynamic> map) {
     return Notification(
-      id: map['id'],
-      title: map['title'],
-      message: map['message'],
-      timestamp: DateTime.parse(map['timestamp']),
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      message: map['message'] ?? '',
+      timestamp: map['timestamp'] != null ? DateTime.parse(map['timestamp']) : DateTime.now(),
       isRead: map['isRead'] ?? false,
       type: map['type'] ?? 'system',
     );
@@ -202,10 +202,12 @@ class NotificationService {
       final notifications = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return Notification(
-          id: data['id'],
-          title: data['title'],
-          message: data['message'],
-          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          id: data['id'] ?? '',
+          title: data['title'] ?? '',
+          message: data['message'] ?? '',
+          timestamp: data['timestamp'] is Timestamp
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.now(),
           isRead: data['isRead'] ?? false,
           type: data['type'] ?? 'system',
         );
@@ -347,10 +349,12 @@ class NotificationService {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return Notification(
-          id: data['id'],
-          title: data['title'],
-          message: data['message'],
-          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          id: data['id'] ?? '',
+          title: data['title'] ?? '',
+          message: data['message'] ?? '',
+          timestamp: data['timestamp'] is Timestamp
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.now(),
           isRead: data['isRead'] ?? false,
           type: data['type'] ?? 'system',
         );
@@ -376,10 +380,12 @@ class NotificationService {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return Notification(
-          id: data['id'],
-          title: data['title'],
-          message: data['message'],
-          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          id: data['id'] ?? '',
+          title: data['title'] ?? '',
+          message: data['message'] ?? '',
+          timestamp: data['timestamp'] is Timestamp
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.now(),
           isRead: data['isRead'] ?? false,
           type: data['type'] ?? 'system',
         );
@@ -577,10 +583,12 @@ class NotificationService {
 
   Future<void> _saveToLocalStorage(Map<String, dynamic> notificationData) async {
     final notification = Notification(
-      id: notificationData['id'],
-      title: notificationData['title'],
-      message: notificationData['message'],
-      timestamp: (notificationData['timestamp'] as Timestamp).toDate(),
+      id: notificationData['id'] ?? '',
+      title: notificationData['title'] ?? '',
+      message: notificationData['message'] ?? '',
+      timestamp: notificationData['timestamp'] is Timestamp
+          ? (notificationData['timestamp'] as Timestamp).toDate()
+          : DateTime.now(),
       isRead: notificationData['isRead'] ?? false,
       type: notificationData['type'] ?? 'system',
     );

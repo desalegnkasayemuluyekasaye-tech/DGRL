@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import 'enhanced_student_dashboard.dart';
+import 'student/dashboard_screen.dart';
 
 class MainScreen extends StatelessWidget {
   final int initialIndex;

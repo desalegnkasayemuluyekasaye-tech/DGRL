@@ -4,9 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/app_provider.dart';
-import 'main_screen.dart';
-import 'admin_panel_screen.dart';
+import '../../providers/app_provider.dart';
+import '../main_screen.dart';
+import '../admin/admin_panel_screen.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {

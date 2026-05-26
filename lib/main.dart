@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'providers/app_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/splash_screen.dart';
+import 'screens/auth/splash_screen.dart';
 import 'services/local_data_setup.dart';
 
 void main() async {

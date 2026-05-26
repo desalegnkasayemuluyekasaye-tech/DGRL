@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../providers/app_provider.dart';
-import '../constants/theme_constants.dart';
-import '../services/firestore_service.dart';
-import '../services/course_service.dart';
-import '../services/grade_service.dart';
-import '../services/excel_import_service.dart';
-import '../models/student.dart';
-import '../models/course.dart';
-import '../models/grade.dart';
-import '../models/course_registration.dart';
-import 'login_screen.dart';
+import '../../providers/app_provider.dart';
+import '../../constants/theme_constants.dart';
+import '../../services/firestore_service.dart';
+import '../../services/course_service.dart';
+import '../../services/grade_service.dart';
+import '../../services/excel_import_service.dart';
+import '../../models/student.dart';
+import '../../models/course.dart';
+import '../../models/grade.dart';
+import '../../models/course_registration.dart';
+import '../auth/login_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});

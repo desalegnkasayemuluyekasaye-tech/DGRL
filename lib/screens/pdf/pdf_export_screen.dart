@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../providers/app_provider.dart';
-import '../constants/theme_constants.dart';
+import '../../providers/app_provider.dart';
+import '../../constants/theme_constants.dart';
 
 class PdfExportScreen extends StatefulWidget {
   const PdfExportScreen({super.key});

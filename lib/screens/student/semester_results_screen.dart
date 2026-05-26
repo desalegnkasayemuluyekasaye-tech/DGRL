@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
-import '../constants/theme_constants.dart';
+import '../../providers/app_provider.dart';
+import '../../constants/theme_constants.dart';
 import 'grade_breakdown_screen.dart';
 
 class SemesterResultsScreen extends StatefulWidget {

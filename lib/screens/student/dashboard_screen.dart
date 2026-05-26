@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
-import '../constants/theme_constants.dart';
-import 'login_screen.dart';
+import '../../providers/app_provider.dart';
+import '../../constants/theme_constants.dart';
+import '../auth/login_screen.dart';
 import 'semester_results_screen.dart';
 import 'gpa_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
-import 'notification_screen.dart';
-import 'pdf_export_screen.dart';
+import '../notifications/notification_screen.dart';
+import '../pdf/pdf_export_screen.dart';
 
 class EnhancedStudentDashboard extends StatefulWidget {
   final int initialIndex;
@@ -47,9 +47,13 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
               children: [
                 _buildAppBar(context, provider),
                 Expanded(child: _buildTabContent(provider)),
-                _buildBottomNav(),
               ],
             ),
+          ),
+          bottomNavigationBar: SafeArea(
+            bottom: true,
+            minimum: const EdgeInsets.only(bottom: 4),
+            child: _buildBottomNav(),
           ),
         );
       },
@@ -174,7 +178,7 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
   }
 
   Widget _buildTabContent(AppProvider provider) {
-    switch (_currentIndex) {
+      switch (_currentIndex) {
       case 0:
         return _buildDashboardTab(provider);
       case 1:
@@ -219,10 +223,66 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
           const SizedBox(height: 14),
           _buildQuickActions(),
           const SizedBox(height: 24),
+          _buildPastResultsCard(),
+          const SizedBox(height: 24),
           Text('Recent Grades', style: AppTextStyles.h3),
           const SizedBox(height: 14),
           _buildRecentGrades(provider),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPastResultsCard() {
+    return GestureDetector(
+      onTap: () => _navigateToTab(3),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: AppTheme.whiteCard,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.history_rounded,
+                color: AppColors.info,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Past Results',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Check your previous semester grades and CGPA breakdown',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,7 +507,7 @@ class _EnhancedStudentDashboardState extends State<EnhancedStudentDashboard> {
   Widget _buildBottomNav() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(18),

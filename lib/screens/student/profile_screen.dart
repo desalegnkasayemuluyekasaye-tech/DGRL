@@ -2,9 +2,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import '../providers/app_provider.dart';
-import '../constants/theme_constants.dart';
-import '../services/image_upload_service.dart';
+import '../../providers/app_provider.dart';
+import '../../constants/theme_constants.dart';
+import '../../services/image_upload_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

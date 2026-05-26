@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/grade.dart';
-import '../models/course.dart';
-import '../constants/theme_constants.dart';
+import '../../models/grade.dart';
+import '../../models/course.dart';
+import '../../constants/theme_constants.dart';
 
 class GradeBreakdownScreen extends StatelessWidget {
   final Grade grade;
